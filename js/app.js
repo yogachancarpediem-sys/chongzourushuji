@@ -665,7 +665,7 @@ function generateShareCard() {
 
   /* 先预加载罨画池插画，确保截图时背景图已就绪 */
   var sceneryImg = new Image();
-  sceneryImg.src = 'assets/scenery/finale.png';
+  sceneryImg.src = 'assets/scenery/finale.webp';
 
   function doGenerate() {
     var card = document.getElementById('share-card');
@@ -696,7 +696,7 @@ function generateShareCard() {
     card.innerHTML =
       '<div class="share-card-inner">' +
       /* 风景插画背景 */
-      '  <div class="share-card-scenery" style="background-image:url(assets/scenery/finale.png);"></div>' +
+      '  <div class="share-card-scenery" style="background-image:url(assets/scenery/finale.webp);"></div>' +
       '  <div class="share-card-scenery-overlay"></div>' +
       '  <div class="share-card-header">' +
       '    <div class="share-card-seal"><span>入</span><span>蜀</span><span>记</span></div>' +
@@ -847,7 +847,7 @@ function generateDailyCard(stationId) {
     '<div class="dc-card" id="dc-card">' +
       '<div class="dc-inner" style="background:' + bg + ';">' +
         /* 风景插画背景 */
-        '<div class="dc-scenery" style="background-image:url(assets/scenery/' + stationId + '.png);"></div>' +
+        '<div class="dc-scenery" style="background-image:url(assets/scenery/' + stationId + '.webp);"></div>' +
         '<div class="dc-scenery-overlay"></div>' +
         /* 印章 */
         '<div class="dc-seal"><span>入</span><span>蜀</span><span>记</span></div>' +

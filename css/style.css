@@ -1096,6 +1096,9 @@ body {
 #view-station.theme-kuizhou {
   background: linear-gradient(180deg, #F0D5C5 0%, #E8C8B5 15%, #F0E0D5 40%, #F5F0E6 100%);
 }
+#view-station.theme-shuzhou {
+  background: linear-gradient(180deg, #E8E0D0 0%, #DDD3C0 10%, #E8E2D5 30%, #F5F0E6 100%);
+}
 
 .detail-hero .detail-name {
   position: relative;
@@ -1145,6 +1148,9 @@ body {
 }
 .theme-kuizhou .station-atmosphere::before {
   background: radial-gradient(ellipse at 50% 50%, #C4A35A, transparent 70%);
+}
+.theme-shuzhou .station-atmosphere::before {
+  background: radial-gradient(ellipse at 50% 45%, #7A9E7E, transparent 70%);
 }
 
 /* ==================== 角色动画 ==================== */
