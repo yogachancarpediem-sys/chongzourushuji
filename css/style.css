@@ -8,7 +8,7 @@
   --parchment-dark: #E8DFD0;
   --ink: #2C2C2C;
   --ink-light: #5A5A5A;
-  --ink-faint: #9A9590;
+  --ink-faint: #7A7570;
   --accent-blue: #5B8FA8;
   --accent-gold: #C4A35A;
   --accent-red: #B85450;
@@ -331,44 +331,26 @@ body {
   margin-bottom: 20px;
 }
 
-.seal {
+/* 印章基类 — 竖式方印共用属性 */
+.seal-base {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   gap: 1px;
-  width: 44px;
-  height: 58px;
-  border: 2.5px solid var(--accent-red);
   color: var(--accent-red);
   font-family: var(--font-title);
-  font-size: 0.92rem;
-  padding: 6px 4px;
-  margin-bottom: 16px;
   transform: rotate(-3deg);
-  letter-spacing: 2px;
   line-height: 1.4;
-  opacity: 0.78;
   position: relative;
-  box-shadow:
-    inset 0 0 0 3px transparent,
-    inset 0 0 0 4px rgba(184, 84, 80, 0.12);
 }
-.seal span {
+.seal-base span {
   display: block;
   text-align: center;
   line-height: 1.4;
 }
-/* 内框 — 双栏印章 */
-.seal::before {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  border: 1px solid rgba(184, 84, 80, 0.35);
-  pointer-events: none;
-}
-/* 做旧斑驳 — 模拟印泥不均匀 */
-.seal::after {
+/* 做旧斑驳纹理 — 四类印章共用 */
+.seal-base::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -376,6 +358,28 @@ body {
     radial-gradient(ellipse at 15% 20%, rgba(245,240,230,0.3) 0%, transparent 55%),
     radial-gradient(ellipse at 85% 75%, rgba(245,240,230,0.25) 0%, transparent 50%),
     radial-gradient(ellipse at 50% 45%, rgba(245,240,230,0.1) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.seal {
+  width: 44px;
+  height: 58px;
+  border: 2.5px solid var(--accent-red);
+  font-size: 0.92rem;
+  padding: 6px 4px;
+  margin-bottom: 16px;
+  letter-spacing: 2px;
+  opacity: 0.78;
+  box-shadow:
+    inset 0 0 0 3px transparent,
+    inset 0 0 0 4px rgba(184, 84, 80, 0.12);
+}
+/* 内框 — 双栏印章 */
+.seal::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(184, 84, 80, 0.35);
   pointer-events: none;
 }
 
@@ -463,29 +467,12 @@ body {
 #goldWake { transition: opacity 0.4s ease; }
 #goldHalo { transition: opacity 0.4s ease; }
 
-/* 墨船 */
-.ink-boat {
-  animation: boatBob 4s ease-in-out infinite;
-}
-
-@keyframes boatBob {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  30% { transform: translate(1px, -2px) rotate(-2deg); }
-  70% { transform: translate(-1px, 1px) rotate(1.5deg); }
-}
-
 /* Shader 激活时的适配 */
 #opening.shader-active .sl {
   fill: rgba(200,195,185,0.4);
 }
 #opening.shader-active .sl.lit {
   fill: rgba(200,180,120,0.9);
-}
-
-#opening.shader-active .ink-boat path,
-#opening.shader-active .ink-boat line {
-  fill: rgba(245,240,230,0.3);
-  stroke: rgba(245,240,230,0.2);
 }
 
 /* ---- 角色预览卡片 ---- */
@@ -656,6 +643,18 @@ body {
 .nav-btn:hover {
   background: rgba(44,44,44,0.05);
   transform: translateY(-2px);
+}
+.nav-btn:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
+}
+.back-btn:focus-visible,
+.start-btn:focus-visible,
+.quiz-option:focus-visible,
+.finale-btn:focus-visible,
+.quiz-restart-btn:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
 }
 
 .nav-btn .badge {
@@ -1397,12 +1396,14 @@ body {
   border-color: var(--bamboo-green);
   color: var(--bamboo-green);
 }
+.quiz-option.correct::after { content: ' ✓'; }
 
 .quiz-option.wrong {
   background: rgba(184,84,80,0.08);
   border-color: var(--accent-red);
   color: var(--accent-red);
 }
+.quiz-option.wrong::after { content: ' ✗'; }
 
 .quiz-option.disabled {
   pointer-events: none;
@@ -1554,8 +1555,8 @@ body {
   position: fixed;
   top: calc(60px + var(--safe-top));
   right: 10px;
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: 1px solid rgba(44,44,44,0.08);
   background: rgba(255,255,255,0.85);
@@ -1572,6 +1573,10 @@ body {
   -webkit-user-select: none;
   user-select: none;
   touch-action: manipulation;
+}
+.bgm-toggle:focus-visible {
+  outline: 2px solid var(--accent-gold);
+  outline-offset: 2px;
 }
 
 .bgm-toggle:hover {
@@ -1781,48 +1786,23 @@ body {
 }
 
 .finale-seal {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 1px;
   width: 44px;
   height: 72px;
   border: 2.5px solid var(--accent-red);
-  color: var(--accent-red);
-  font-family: var(--font-title);
   font-size: 0.92rem;
   padding: 6px 5px;
   margin-bottom: 20px;
-  transform: rotate(-3deg);
   letter-spacing: 2px;
-  line-height: 1.4;
   opacity: 0.78;
-  position: relative;
   box-shadow:
     inset 0 0 0 3px transparent,
     inset 0 0 0 4px rgba(184, 84, 80, 0.12);
-}
-.finale-seal span {
-  display: block;
-  text-align: center;
-  line-height: 1.4;
 }
 .finale-seal::before {
   content: '';
   position: absolute;
   inset: 4px;
   border: 1px solid rgba(184, 84, 80, 0.35);
-  pointer-events: none;
-}
-.finale-seal::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 15% 20%, rgba(245,240,230,0.3) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 75%, rgba(245,240,230,0.25) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 45%, rgba(245,240,230,0.1) 0%, transparent 40%);
   pointer-events: none;
 }
 
@@ -2211,48 +2191,23 @@ body {
   z-index: 2;
 }
 .share-card-seal {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 1px;
   width: 42px;
   height: 56px;
   border: 2.5px solid var(--accent-red);
-  color: var(--accent-red);
-  font-family: var(--font-title);
   font-size: 0.85rem;
   padding: 6px 4px;
-  transform: rotate(-3deg);
   letter-spacing: 2px;
-  line-height: 1.4;
   margin-bottom: 12px;
   opacity: 0.78;
-  position: relative;
   box-shadow:
     inset 0 0 0 3px transparent,
     inset 0 0 0 4px rgba(184, 84, 80, 0.12);
-}
-.share-card-seal span {
-  display: block;
-  text-align: center;
-  line-height: 1.4;
 }
 .share-card-seal::before {
   content: '';
   position: absolute;
   inset: 4px;
   border: 1px solid rgba(184, 84, 80, 0.35);
-  pointer-events: none;
-}
-.share-card-seal::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 15% 20%, rgba(245,240,230,0.3) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 75%, rgba(245,240,230,0.25) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 45%, rgba(245,240,230,0.1) 0%, transparent 40%);
   pointer-events: none;
 }
 .share-card-title {
@@ -2415,47 +2370,24 @@ body {
   position: absolute;
   top: 26px;
   left: 26px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 1px;
   width: 38px;
   height: 50px;
   border: 2px solid #B85450;
   color: #B85450;
-  font-family: 'Ma Shan Zheng', 'STKaiti', 'KaiTi', serif;
   font-size: 0.78rem;
   padding: 5px 3px;
-  transform: rotate(-3deg);
   letter-spacing: 1px;
-  line-height: 1.4;
   opacity: 0.68;
   z-index: 2;
   box-shadow:
     inset 0 0 0 2px transparent,
     inset 0 0 0 3px rgba(184, 84, 80, 0.1);
 }
-.dc-seal span {
-  display: block;
-  text-align: center;
-  line-height: 1.4;
-}
 .dc-seal::before {
   content: '';
   position: absolute;
   inset: 3px;
   border: 1px solid rgba(184, 84, 80, 0.3);
-  pointer-events: none;
-}
-.dc-seal::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 15% 20%, rgba(245,240,230,0.3) 0%, transparent 55%),
-    radial-gradient(ellipse at 85% 75%, rgba(245,240,230,0.25) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 45%, rgba(245,240,230,0.1) 0%, transparent 40%);
   pointer-events: none;
 }
 

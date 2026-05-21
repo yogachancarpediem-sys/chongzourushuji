@@ -16,10 +16,10 @@
 ## 功能特性
 
 - **水墨开场动画**：基于 WebGL Shader 实现的动态水墨效果  
-- **入蜀之旅**：8 个主题驿站，还原沿途风景与行旅体验  
+- **入蜀之旅**：9 个主题驿站，还原沿途风景与行旅体验  
 - **角色互动**：陆小六、喵喵芭迪、狸奴等多位角色陪伴旅程  
 - **行记收集**：收集《入蜀记》改编片段  
-- **互动体验**：轻量化交互与内容探索（替代传统诗词问答）  
+- **互动体验**：诗词挑战、诗签日签生成  
 - **成就系统**：记录旅程中的关键节点  
 - **背景音乐**：支持开关的氛围音乐  
 - **进度保存**：自动记录用户进度  
@@ -46,16 +46,32 @@
 - WebGL（水墨背景渲染）
 
 ## 目录结构
-├── index.html # 主页面
+```
+├── index.html                    # 主页面
+├── README.md
+├── .nojekyll                     # GitHub Pages 配置
 ├── css/
-│ └── style.css # 样式文件
+│   └── style.css                 # 样式文件
 ├── js/
-│ ├── app.js # 主应用逻辑
-│ ├── data.js # 数据定义
-│ └── shader-bg.js # WebGL 水墨背景
+│   ├── app.js                    # 主应用逻辑
+│   ├── data.js                   # 数据定义
+│   └── shader-bg.js              # WebGL 水墨背景
 └── assets/
-├── bgm.mp3 # 背景音乐
-└── characters/ # 角色立绘
+    ├── bgm.mp3                   # 背景音乐
+    ├── share-card.png            # OG/Twitter 分享图
+    ├── scenery/                  # 驿站风景插画（WebP）
+    │   ├── linan.webp
+    │   ├── shanyin.webp
+    │   ├── fengqiao.webp
+    │   ├── jinshan.webp
+    │   ├── jiankang.webp
+    │   ├── huangzhou.webp
+    │   ├── wushan.webp
+    │   ├── kuizhou.webp
+    │   ├── shuzhou.webp
+    │   └── finale.webp
+    └── characters/               # 角色立绘（WebP）
+```
 
 ## 许可证
 
@@ -108,13 +124,19 @@ Simply open `index.html` in your browser to begin the experience.
 - WebGL (ink-wash rendering)
 
 ## Directory Structure
-├── index.html # Main page
+```
+├── index.html                    # Main page
+├── README.md
+├── .nojekyll                     # GitHub Pages config
 ├── css/
-│ └── style.css # Stylesheet
+│   └── style.css                 # Stylesheet
 ├── js/
-│ ├── app.js # Main application logic
-│ ├── data.js # Data definitions
-│ └── shader-bg.js # WebGL ink-wash background
+│   ├── app.js                    # Main application logic
+│   ├── data.js                   # Data definitions
+│   └── shader-bg.js              # WebGL ink-wash background
 └── assets/
-├── bgm.mp3 # Background music
-└── characters/ # Character illustrations
+    ├── bgm.mp3                   # Background music
+    ├── share-card.png            # OG/Twitter share image
+    ├── scenery/                  # Waystation landscape illustrations (WebP)
+    └── characters/               # Character illustrations (WebP)
+```

@@ -150,7 +150,7 @@ const STATIONS = [
   {
     id: "huangzhou",
     name: "黄州",
-    modernName: "黄冈·黄州市",
+    modernName: "黄冈·黄州区",
     date: "乾道六年八月十八日",
     dateTag: "八月",
     poem: {

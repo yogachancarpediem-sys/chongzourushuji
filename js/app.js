@@ -33,6 +33,7 @@ function saveState() {
 // ==================== 页面切换 ====================
 function startJourney() {
   pauseOpeningShader();
+  if (window._stopGoldBoat) window._stopGoldBoat();
   document.getElementById('opening').classList.remove('active');
   document.getElementById('main').classList.add('active');
   document.getElementById('main').classList.add('screen-enter');
@@ -67,6 +68,12 @@ function showView(viewName) {
   if (viewName === 'poetry') renderPoetryList();
   if (viewName === 'achievements') renderAchievements();
   if (viewName === 'map') renderMap();
+
+  /* 非地图/驿站视图时隐藏角色气泡 */
+  var bubble = document.getElementById('character-bubble');
+  if (bubble) {
+    bubble.style.display = (viewName === 'map' || viewName === 'station') ? '' : 'none';
+  }
 }
 
 function quickJump(stationId) {
@@ -266,7 +273,19 @@ function renderQuiz() {
     return;
   }
 
-  const nextUnanswered = QUIZ_DATA.findIndex((_, i) => !state.quizAnswered.includes(i));
+  /* 优先出已访问驿站的题目，增强叙事连贯性 */
+  var unansweredIndices = [];
+  QUIZ_DATA.forEach(function(_, i) {
+    if (!state.quizAnswered.includes(i)) unansweredIndices.push(i);
+  });
+  unansweredIndices.sort(function(a, b) {
+    var aVisited = state.visitedStations.includes(QUIZ_DATA[a].stationId);
+    var bVisited = state.visitedStations.includes(QUIZ_DATA[b].stationId);
+    if (aVisited && !bVisited) return -1;
+    if (!aVisited && bVisited) return 1;
+    return 0;
+  });
+  var nextUnanswered = unansweredIndices[0];
   if (nextUnanswered === -1) return;
   state.currentQuizIndex = nextUnanswered;
   const quiz = QUIZ_DATA[nextUnanswered];
@@ -589,7 +608,7 @@ function showFinale() {
       <span class="finale-particle fp6">✨</span>
     </div>
     <div class="finale-content">
-      <div class="finale-seal"><span>诗</span><span>旅</span><span>圆</span><span>满</span></div>
+      <div class="finale-seal seal-base"><span>诗</span><span>旅</span><span>圆</span><span>满</span></div>
       <h2 class="finale-title">重走《入蜀记》</h2>
       <p class="finale-subtitle">陆游 · 乾道六年（1170）</p>
 
@@ -699,7 +718,7 @@ function generateShareCard() {
       '  <div class="share-card-scenery" style="background-image:url(assets/scenery/finale.webp);"></div>' +
       '  <div class="share-card-scenery-overlay"></div>' +
       '  <div class="share-card-header">' +
-      '    <div class="share-card-seal"><span>入</span><span>蜀</span><span>记</span></div>' +
+      '    <div class="share-card-seal seal-base"><span>入</span><span>蜀</span><span>记</span></div>' +
       '    <div class="share-card-title">重走《入蜀记》</div>' +
       '    <div class="share-card-subtitle">陆游 · 乾道六年（1170）</div>' +
       '  </div>' +
@@ -850,7 +869,7 @@ function generateDailyCard(stationId) {
         '<div class="dc-scenery" style="background-image:url(assets/scenery/' + stationId + '.webp);"></div>' +
         '<div class="dc-scenery-overlay"></div>' +
         /* 印章 */
-        '<div class="dc-seal"><span>入</span><span>蜀</span><span>记</span></div>' +
+        '<div class="dc-seal seal-base"><span>入</span><span>蜀</span><span>记</span></div>' +
         /* 驿站名 */
         '<div class="dc-station-name">' + station.name + '</div>' +
         '<div class="dc-modern-name">' + station.modernName + '</div>' +
@@ -1009,6 +1028,7 @@ initBGM();
 })();
 
 // ==================== 鎏金帆船动画（JS 驱动） ====================
+var _goldBoatRafId = null;
 (function() {
   var path, goldBoat, goldWake, goldHalo;
   var totalLen = 0;
@@ -1120,11 +1140,19 @@ initBGM();
         }
       });
 
-      requestAnimationFrame(frame);
+      _goldBoatRafId = requestAnimationFrame(frame);
     }
 
-    requestAnimationFrame(frame);
+    _goldBoatRafId = requestAnimationFrame(frame);
   }
+
+  /* 停止帆船动画（退出开场页时调用） */
+  window._stopGoldBoat = function() {
+    if (_goldBoatRafId) {
+      cancelAnimationFrame(_goldBoatRafId);
+      _goldBoatRafId = null;
+    }
+  };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
