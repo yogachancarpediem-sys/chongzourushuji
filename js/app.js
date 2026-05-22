@@ -49,6 +49,26 @@ function startJourney() {
   }
 }
 
+/* 朗读辅助函数 */
+window._ttsReadDiary = function(stationId) {
+  var station = STATIONS.find(function(s) { return s.id === stationId; });
+  if (station) {
+    var text = station.diary.replace(/<[^>]*>/g, '').replace(/\n/g, '，');
+    TTS.speakDiary(text);
+  }
+};
+
+window._ttsReadPoem = function(stationId) {
+  var station = STATIONS.find(function(s) { return s.id === stationId; });
+  if (station) {
+    TTS.speakPoem(station.poem.title, station.poem.author, station.poem.lines);
+  }
+};
+
+window._ttsStop = function() {
+  TTS.stop();
+};
+
 function showView(viewName) {
   var prevView = state.currentView;
 
@@ -200,7 +220,10 @@ function openStation(stationId) {
     </div>
 
     <div class="detail-section">
-      <div class="section-label">📜 陆游手记</div>
+      <div class="section-label">
+        <span>📜 陆游手记</span>
+        <button class="tts-btn" onclick="event.stopPropagation();_ttsReadDiary('${station.id}')" title="朗读日记">🔊</button>
+      </div>
       <p class="diary-text">${station.diary.replace(/\n/g, '<br>')}</p>
     </div>
 
@@ -238,7 +261,10 @@ function openStation(stationId) {
     </div>
 
     <div class="detail-section">
-      <div class="section-label">📖 诗心共鸣</div>
+      <div class="section-label">
+        <span>📖 诗心共鸣</span>
+        <button class="tts-btn" onclick="event.stopPropagation();_ttsReadPoem('${station.id}')" title="朗读诗歌">🔊</button>
+      </div>
       <div class="poem-card">
         <div class="poem-title-author">${station.poem.title} · ${station.poem.author}</div>
         <div class="poem-lines">
@@ -444,14 +470,17 @@ function renderPoetryList() {
     }
   });
 
-  list.innerHTML = poems.map(p => `
-    <div class="poetry-list-item" onclick="showPoetryDetail('${p.title}', '${p.author}')">
-      <div class="poem-title-author">《${p.title}》· ${p.author}</div>
-      <div class="poetry-preview">
-        ${p.lines[0]}${p.lines[1] ? ' ' + p.lines[1] : ''}
-      </div>
-    </div>
-  `).join('');
+  list.innerHTML = poems.map(function(p, i) {
+    return '<div class="poetry-list-item">' +
+      '<div class="pli-main" onclick="showPoetryDetail(\'' + p.title + '\', \'' + p.author + '\')">' +
+        '<div class="poem-title-author">《' + p.title + '》· ' + p.author + '</div>' +
+        '<div class="poetry-preview">' +
+          (p.lines[0] || '') + (p.lines[1] ? ' ' + p.lines[1] : '') +
+        '</div>' +
+      '</div>' +
+      '<button class="tts-btn tts-btn-sm" onclick="event.stopPropagation();TTS.speakPoem(\'' + p.title + '\', \'' + p.author + '\', ' + JSON.stringify(p.lines) + ')" title="朗读">🔊</button>' +
+    '</div>';
+  }).join('');
 }
 
 function showPoetryDetail(title, author) {
