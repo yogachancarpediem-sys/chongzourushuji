@@ -57,8 +57,8 @@
 │   ├── data.js                   # 数据定义
 │   └── shader-bg.js              # WebGL 水墨背景
 └── assets/
-    ├── bgm.mp3                   # 背景音乐
-    ├── share-card.png            # OG/Twitter 分享图
+    ├── bgm.mp3 / bgm.ogg         # 背景音乐（双格式兼容）
+    ├── share-card.webp           # OG/Twitter 分享图
     ├── scenery/                  # 驿站风景插画（WebP）
     │   ├── linan.webp
     │   ├── shanyin.webp
@@ -135,8 +135,8 @@ Simply open `index.html` in your browser to begin the experience.
 │   ├── data.js                   # Data definitions
 │   └── shader-bg.js              # WebGL ink-wash background
 └── assets/
-    ├── bgm.mp3                   # Background music
-    ├── share-card.png            # OG/Twitter share image
+    ├── bgm.mp3 / bgm.ogg         # Background music (dual format)
+    ├── share-card.webp           # OG/Twitter share image
     ├── scenery/                  # Waystation landscape illustrations (WebP)
     └── characters/               # Character illustrations (WebP)
 ```
