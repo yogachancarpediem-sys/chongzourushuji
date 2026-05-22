@@ -21,7 +21,7 @@
   <script async src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='8' fill='%23C4A35A'/><text x='50' y='68' font-size='60' text-anchor='middle' font-family='serif' fill='%23F5F0E6'>蜀</text></svg>">
   <title>重走《入蜀记》：陆小六的奇幻诗旅</title>
-  <link rel="stylesheet" href="css/style.css?v=33">
+  <link rel="stylesheet" href="css/style.css?v=34">
   <link rel="preconnect" href="https://fonts.loli.net">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=Ma+Shan+Zheng&display=swap" rel="stylesheet" onerror="this.remove()">
@@ -72,13 +72,13 @@
       </div>
 
       <p class="description">
-        南宋乾道六年（1170），诗人陆游从故乡山阴出发，<br>
-        历时近五个月，沿运河南下入长江，终抵夔州，正式入蜀。<br>
+        南宋乾道六年（1170），诗人陆游离京返乡，从临安出发，<br>
+        经山阴，沿运河南下入长江，历时近五个月终抵夔州，正式入蜀。<br>
         这场山水之旅，藏着多少诗心碎片与风物精华？
       </p>
 
       <!-- 诗旅路线 · 水墨流线 -->
-      <!-- 路线：山阴 → 镇江府 → 建康府 → 江州 → 江陵府 → 夔州 → 蜀州 -->
+      <!-- 路线：临安 → 山阴 → 枫桥 → 金山 → 建康 → 黄州 → 巫山 → 夔州 → 蜀州 -->
       <div class="route-stream" id="route-stream">
         <svg class="stream-svg" viewBox="0 0 510 70" preserveAspectRatio="xMidYMid meet">
           <defs>
@@ -87,13 +87,13 @@
               <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
             </filter>
           </defs>
-          <!-- 淡墨底线：山阴 → 夔州 → 蜀州（水道延伸至川西） -->
+          <!-- 淡墨底线：临安 → 蜀州（九站一线） -->
           <path id="streamPath"
-                d="M30,38 C80,28 130,42 190,32 C250,22 300,38 360,28 C400,22 440,32 468,35 C485,37 493,34 500,36"
+                d="M16,38 C40,28 54,40 72,34 C100,26 112,40 132,30 C158,38 170,30 192,34 C222,24 236,40 252,28 C282,38 296,30 312,34 C342,26 354,36 372,30 C402,38 422,30 440,33 C462,28 482,36 498,36"
                 fill="none" stroke="var(--ink)" stroke-width="0.6" stroke-linecap="round"
                 opacity="0.1"/>
           <!-- 水墨晕染 -->
-          <path d="M30,38 C80,28 130,42 190,32 C250,22 300,38 360,28 C400,22 440,32 468,35 C485,37 493,34 500,36"
+          <path d="M16,38 C40,28 54,40 72,34 C100,26 112,40 132,30 C158,38 170,30 192,34 C222,24 236,40 252,28 C282,38 296,30 312,34 C342,26 354,36 372,30 C402,38 422,30 440,33 C462,28 482,36 498,36"
                 fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"
                 opacity="0.02"/>
           <!-- 金光帆船（JS 控制位置与朝向） -->
@@ -115,23 +115,26 @@
           <!-- 船身柔光晕 -->
           <circle id="goldHalo" cx="0" cy="0" r="6"
                   fill="var(--accent-gold)" opacity="0"/>
-          <!-- 站点圆点（左→右：临安→山阴→镇江→建康→江州→江陵→夔州→蜀州） -->
-          <circle cx="30" cy="38" r="2.5" fill="var(--accent-gold)" class="sp sp-1" data-station="shanyin"/>
-          <circle cx="120" cy="34" r="2" fill="var(--ink)" class="sp sp-2" data-station="jinshan"/>
-          <circle cx="210" cy="36" r="2" fill="var(--ink)" class="sp sp-3" data-station="jiankang"/>
-          <circle cx="300" cy="30" r="2" fill="var(--ink)" class="sp sp-4"/>
-          <circle cx="380" cy="32" r="2" fill="var(--ink)" class="sp sp-5"/>
-          <circle cx="460" cy="33" r="2.5" fill="var(--accent-red)" class="sp sp-6" data-station="kuizhou"/>
-          <circle cx="498" cy="36" r="2.5" fill="var(--accent-teal)" class="sp sp-7" data-station="shuzhou"/>
+          <!-- 站点圆点（临安→山阴→枫桥→金山→建康→黄州→巫山→夔州→蜀州） -->
+          <circle cx="16" cy="38" r="2" fill="var(--ink)" class="sp sp-1" data-station="linan"/>
+          <circle cx="72" cy="34" r="2.5" fill="var(--accent-gold)" class="sp sp-2" data-station="shanyin"/>
+          <circle cx="132" cy="30" r="2" fill="var(--ink)" class="sp sp-3" data-station="fengqiao"/>
+          <circle cx="192" cy="34" r="2" fill="var(--ink)" class="sp sp-4" data-station="jinshan"/>
+          <circle cx="252" cy="28" r="2" fill="var(--ink)" class="sp sp-5" data-station="jiankang"/>
+          <circle cx="312" cy="34" r="2" fill="var(--ink)" class="sp sp-6" data-station="huangzhou"/>
+          <circle cx="372" cy="30" r="2" fill="var(--ink)" class="sp sp-7" data-station="wushan"/>
+          <circle cx="440" cy="33" r="2.5" fill="var(--accent-red)" class="sp sp-8" data-station="kuizhou"/>
+          <circle cx="498" cy="36" r="2.5" fill="var(--accent-gold)" class="sp sp-9" data-station="shuzhou"/>
           <!-- 站名文字 -->
-          <text x="30" y="56" class="sl sl-1">山阴</text>
-          <text x="120" y="56" class="sl sl-2">镇江府</text>
-          <text x="210" y="56" class="sl sl-3">建康府</text>
-          <text x="300" y="56" class="sl sl-4">江州</text>
-          <text x="380" y="56" class="sl sl-5">江陵府</text>
-          <text x="460" y="56" class="sl sl-6">夔州</text>
-          <text x="498" y="56" class="sl sl-7">蜀州</text>
-          <!-- 墨船已删除 -->
+          <text x="16" y="56" class="sl sl-1">临安</text>
+          <text x="72" y="56" class="sl sl-2">山阴</text>
+          <text x="132" y="56" class="sl sl-3">枫桥</text>
+          <text x="192" y="56" class="sl sl-4">金山</text>
+          <text x="252" y="56" class="sl sl-5">建康</text>
+          <text x="312" y="56" class="sl sl-6">黄州</text>
+          <text x="372" y="56" class="sl sl-7">巫山</text>
+          <text x="440" y="56" class="sl sl-8">夔州</text>
+          <text x="498" y="56" class="sl sl-9">蜀州</text>
         </svg>
       </div>
 

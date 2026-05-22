@@ -1118,12 +1118,14 @@ var _goldBoatRafId = null;
 
     stations = [
       { dot: document.querySelector('.sp-1'), text: document.querySelector('.sl-1'), ratio: 0.00 },
-      { dot: document.querySelector('.sp-2'), text: document.querySelector('.sl-2'), ratio: 0.18 },
-      { dot: document.querySelector('.sp-3'), text: document.querySelector('.sl-3'), ratio: 0.36 },
-      { dot: document.querySelector('.sp-4'), text: document.querySelector('.sl-4'), ratio: 0.56 },
-      { dot: document.querySelector('.sp-5'), text: document.querySelector('.sl-5'), ratio: 0.76 },
-      { dot: document.querySelector('.sp-6'), text: document.querySelector('.sl-6'), ratio: 0.95 },
-      { dot: document.querySelector('.sp-7'), text: document.querySelector('.sl-7'), ratio: 0.98 }
+      { dot: document.querySelector('.sp-2'), text: document.querySelector('.sl-2'), ratio: 0.12 },
+      { dot: document.querySelector('.sp-3'), text: document.querySelector('.sl-3'), ratio: 0.24 },
+      { dot: document.querySelector('.sp-4'), text: document.querySelector('.sl-4'), ratio: 0.36 },
+      { dot: document.querySelector('.sp-5'), text: document.querySelector('.sl-5'), ratio: 0.48 },
+      { dot: document.querySelector('.sp-6'), text: document.querySelector('.sl-6'), ratio: 0.60 },
+      { dot: document.querySelector('.sp-7'), text: document.querySelector('.sl-7'), ratio: 0.72 },
+      { dot: document.querySelector('.sp-8'), text: document.querySelector('.sl-8'), ratio: 0.86 },
+      { dot: document.querySelector('.sp-9'), text: document.querySelector('.sl-9'), ratio: 0.98 }
     ];
 
     stations.forEach(function(s) {
