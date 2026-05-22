@@ -854,27 +854,30 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
-/* 雾锁未解锁驿站 — 径向渐变墨雾覆盖卡片，无需 backdrop-filter */
+/* 雾锁未解锁驿站 — 轻盈山间晨雾，低饱和度冷色 + 缓慢呼吸动效 */
 .station-fog {
   position: absolute;
-  inset: 0;
+  inset: -10px;
   z-index: 2;
   pointer-events: none;
   border-radius: var(--radius);
   background:
-    radial-gradient(ellipse at 25% 40%, rgba(160, 145, 120, 0.55) 0%, transparent 55%),
-    radial-gradient(ellipse at 65% 55%, rgba(145, 135, 110, 0.45) 0%, transparent 55%),
-    radial-gradient(ellipse at 50% 80%, rgba(170, 158, 135, 0.35) 0%, transparent 60%);
+    radial-gradient(ellipse 55% 40% at 18% 32%, rgba(200, 212, 225, 0.28) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 38% at 72% 50%, rgba(190, 205, 218, 0.22) 0%, transparent 58%),
+    radial-gradient(ellipse 65% 32% at 48% 78%, rgba(195, 208, 222, 0.18) 0%, transparent 62%),
+    radial-gradient(ellipse 35% 25% at 85% 25%, rgba(210, 218, 228, 0.14) 0%, transparent 55%);
   opacity: 1;
-  transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: fogBreathe 7s ease-in-out infinite;
 }
 .station-card:not(.visited) .station-name,
 .station-card:not(.visited) .station-meta {
-  filter: blur(1px);
+  filter: blur(0.5px);
   transition: filter 0.8s ease;
 }
 .station-card.visited .station-fog {
   opacity: 0;
+  animation: none;
 }
 .station-card.visited .station-name,
 .station-card.visited .station-meta {
@@ -882,21 +885,23 @@ body {
 }
 .station-card.unlocking .station-fog {
   animation: fogLift 1.5s ease-out forwards;
-  animation-delay: 0.3s;
 }
 .station-card.unlocking .station-name,
 .station-card.unlocking .station-meta {
   animation: fogUnblur 1.5s ease-out forwards;
-  animation-delay: 0.3s;
+}
+@keyframes fogBreathe {
+  0%, 100% { opacity: 0.78; }
+  40% { opacity: 1; }
+  70% { opacity: 0.88; }
 }
 @keyframes fogLift {
   0% { opacity: 1; }
-  30% { opacity: 0.7; }
+  30% { opacity: 0.6; }
   100% { opacity: 0; }
 }
 @keyframes fogUnblur {
-  0% { filter: blur(1px); }
-  30% { filter: blur(0.6px); }
+  0% { filter: blur(0.5px); }
   100% { filter: blur(0px); }
 }
 
@@ -1898,7 +1903,7 @@ body {
   }
 
   .back-btn { margin-top: 8px; }
-  .station-fog { background: radial-gradient(ellipse at 25% 40%, rgba(160,145,120,0.5) 0%, transparent 55%), radial-gradient(ellipse at 65% 55%, rgba(145,135,110,0.4) 0%, transparent 55%); }
+  .station-fog { background: radial-gradient(ellipse 55% 35% at 20% 30%, rgba(200,212,225,0.22) 0%, transparent 60%), radial-gradient(ellipse 50% 35% at 70% 55%, rgba(190,205,218,0.18) 0%, transparent 58%); }
   .interaction-img-main.unlock-jump { animation: unlockJump 0.6s ease-out !important; }
   .interaction-img-cat.cat-hop { animation: catHop 0.45s ease-out !important; }
 }
