@@ -170,6 +170,81 @@ body {
   border-color: var(--ink);
 }
 
+/* 终页触发按钮（最后一站底部） */
+.finale-trigger {
+  text-align: center;
+  padding: 32px 20px 40px;
+  animation: finaleTriggerIn 0.8s ease both;
+}
+@keyframes finaleTriggerIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.finale-trigger-divider {
+  width: 60px;
+  height: 1px;
+  margin: 0 auto 16px;
+  background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+}
+.finale-trigger-text {
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  color: var(--ink-light);
+  letter-spacing: 4px;
+  margin-bottom: 20px;
+}
+.finale-trigger-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--ink);
+  color: var(--parchment);
+  font-family: var(--font-title);
+  font-size: 1.2rem;
+  letter-spacing: 3px;
+  padding: 16px 40px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  min-height: 44px;
+  -webkit-user-select: none;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+}
+.finale-trigger-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--accent-gold), var(--accent-red));
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.finale-trigger-btn:hover::before {
+  opacity: 1;
+}
+.finale-trigger-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(44,44,44,0.2);
+}
+.finale-trigger-btn span {
+  position: relative;
+  z-index: 1;
+}
+.finale-trigger-arrow {
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+  opacity: 0.75;
+}
+
+/* 非最后一站时隐藏触发按钮 */
+.view:not(#view-station) .finale-trigger,
+#view-station:not(.active) .finale-trigger {
+  display: none !important;
+}
+
 /* ==================== Shader Canvas ==================== */
 .shader-canvas {
   position: absolute;

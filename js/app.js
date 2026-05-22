@@ -144,6 +144,10 @@ function openStation(stationId) {
 
   state.currentStationId = stationId;
 
+  /* 重置终页触发按钮 */
+  var finaleTrigger = document.getElementById('finale-trigger');
+  if (finaleTrigger) finaleTrigger.style.display = 'none';
+
   var isFirstVisit = !state.visitedStations.includes(stationId);
 
   if (isFirstVisit) {
@@ -319,8 +323,9 @@ function openStation(stationId) {
 
   showBubble(dialogues[Math.floor(Math.random() * dialogues.length)]);
 
+  /* 全站解锁：最后一站详情底部显示"抵达蜀州"按钮，不再自动弹终页 */
   if (state.visitedStations.length >= STATIONS.length) {
-    setTimeout(() => showFinale(), 1200);
+    finaleTrigger.style.display = 'block';
   }
 }
 
