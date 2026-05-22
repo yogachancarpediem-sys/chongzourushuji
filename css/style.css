@@ -990,6 +990,55 @@ body {
   color: var(--bamboo-green);
 }
 
+/* 入蜀风物志 */
+.fengwu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.fengwu-card {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: rgba(196,163,90,0.04);
+  border: 1px solid rgba(196,163,90,0.12);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  transition: background 0.25s, border-color 0.25s;
+}
+
+.fengwu-card:hover {
+  background: rgba(196,163,90,0.08);
+  border-color: rgba(196,163,90,0.25);
+}
+
+.fengwu-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 2px;
+}
+
+.fengwu-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.fengwu-title {
+  font-family: var(--font-title);
+  font-size: 0.9rem;
+  color: var(--ink);
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+
+.fengwu-text {
+  font-size: 0.82rem;
+  color: var(--ink-light);
+  line-height: 1.75;
+}
+
 .poem-card {
   background: linear-gradient(135deg, rgba(196,163,90,0.05), rgba(245,240,230,0.8));
   border: 1px solid rgba(196,163,90,0.15);
@@ -1699,6 +1748,10 @@ body {
   .achievement-icon { font-size: 1.6rem; }
 
   .scenery-tag { padding: 4px 12px; font-size: 0.8rem; }
+  .fengwu-card { padding: 14px 14px; gap: 10px; }
+  .fengwu-icon { font-size: 1.3rem; }
+  .fengwu-title { font-size: 0.82rem; }
+  .fengwu-text { font-size: 0.76rem; line-height: 1.7; }
 
   .fragment-item {
     padding: 6px 12px;

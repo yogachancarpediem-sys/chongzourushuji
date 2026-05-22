@@ -166,6 +166,23 @@ function openStation(stationId) {
       <p class="diary-text">${station.diary.replace(/\n/g, '<br>')}</p>
     </div>
 
+    ${station.fengwu && station.fengwu.length > 0 ? `
+    <div class="detail-section">
+      <div class="section-label">📖 入蜀风物志</div>
+      <div class="fengwu-list">
+        ${station.fengwu.map(f => `
+          <div class="fengwu-card">
+            <span class="fengwu-icon">${f.icon}</span>
+            <div class="fengwu-body">
+              <div class="fengwu-title">${f.title}</div>
+              <div class="fengwu-text">${f.text}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    ` : ''}
+
     <div class="detail-section">
       <div class="section-label">🏔️ 诗旅风物</div>
       <div class="scenery-tags">
