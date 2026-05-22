@@ -155,6 +155,7 @@ function openStation(stationId) {
       <div class="detail-name">${station.name}</div>
       <div class="detail-modern">${station.modernName}</div>
       <div class="detail-date">${station.date}</div>
+      <div class="detail-mood">${station.mood || ''}</div>
       <div class="detail-divider"></div>
       <p class="detail-desc">${station.description}</p>
       <button class="daily-card-btn" onclick="generateDailyCard('${stationId}')">📷 生成诗签</button>
@@ -162,7 +163,7 @@ function openStation(stationId) {
 
     <div class="detail-section">
       <div class="section-label">📜 陆游手记</div>
-      <p class="diary-text">${station.diary}</p>
+      <p class="diary-text">${station.diary.replace(/\n/g, '<br>')}</p>
     </div>
 
     <div class="detail-section">

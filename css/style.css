@@ -912,6 +912,19 @@ body {
   color: var(--ink-faint);
 }
 
+.detail-mood {
+  display: inline-block;
+  font-family: var(--font-title);
+  font-size: 0.85rem;
+  color: var(--accent-red);
+  background: rgba(184,84,80,0.06);
+  border: 1px solid rgba(184,84,80,0.15);
+  border-radius: 4px;
+  padding: 3px 14px;
+  margin-top: 8px;
+  letter-spacing: 2px;
+}
+
 .detail-divider {
   width: 60px;
   height: 2px;
@@ -1647,6 +1660,7 @@ body {
   .detail-hero { padding: 20px 0 16px; }
   .detail-name { font-size: 1.8rem; }
   .detail-modern { font-size: 0.85rem; }
+  .detail-mood { font-size: 0.78rem; padding: 2px 12px; }
   .detail-desc { font-size: 0.9rem; line-height: 1.8; }
   .detail-section { padding: 16px; margin-bottom: 12px; }
 
