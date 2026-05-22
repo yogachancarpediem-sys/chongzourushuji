@@ -179,6 +179,7 @@
         <button class="nav-btn" onclick="showView('achievements')" title="成就">🏆</button>
         <button class="nav-btn" onclick="showView('quiz')" title="诗词挑战">📝</button>
         <button class="nav-btn" onclick="showView('poetry')" title="诗集">📖</button>
+        <button class="nav-btn" onclick="showView('gallery')" title="诗签画廊">🖼️</button>
       </div>
     </header>
 
@@ -233,6 +234,20 @@
       <div class="poetry-container" id="poetry-container">
         <h2 class="section-title">诗心共鸣</h2>
         <div class="poetry-list" id="poetry-list"></div>
+      </div>
+    </div>
+
+    <!-- ===== 诗签画廊视图 ===== -->
+    <div id="view-gallery" class="view">
+      <button class="back-btn" onclick="showView('map')">← 返回地图</button>
+      <div class="gallery-container">
+        <h2 class="section-title">诗签画廊</h2>
+        <p class="gallery-subtitle">你所收集的诗签，皆在此处</p>
+        <div class="gallery-grid" id="gallery-grid"></div>
+        <div class="gallery-empty" id="gallery-empty" style="display:none">
+          <p>还没有收集任何诗签</p>
+          <p class="gallery-empty-hint">探索驿站，生成你的第一张诗签吧</p>
+        </div>
       </div>
     </div>
 

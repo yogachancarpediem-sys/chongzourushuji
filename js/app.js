@@ -87,6 +87,7 @@ function doShowView(viewName) {
   if (viewName === 'quiz') renderQuiz();
   if (viewName === 'poetry') renderPoetryList();
   if (viewName === 'achievements') renderAchievements();
+  if (viewName === 'gallery') renderGallery();
   if (viewName === 'map') renderMap();
 
   /* 非地图/驿站视图时隐藏角色气泡 */
@@ -461,6 +462,53 @@ function showPoetryDetail(title, author) {
       });
     }, 300);
   }
+}
+
+// ==================== 诗签画廊 ====================
+function renderGallery() {
+  var grid = document.getElementById('gallery-grid');
+  var empty = document.getElementById('gallery-empty');
+  var visited = state.visitedStations;
+
+  if (!visited.length) {
+    if (grid) grid.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+
+  if (empty) empty.style.display = 'none';
+
+  var stations = STATIONS.filter(function(s) { return visited.includes(s.id); });
+
+  /* 主题色映射 */
+  var themeColors = {
+    linan: { bg: 'linear-gradient(135deg, #E8DFD0 0%, #D4C9B8 100%)', accent: '#B85450' },
+    shanyin: { bg: 'linear-gradient(135deg, #D5E0D0 0%, #B5C9B0 100%)', accent: '#5B8FA8' },
+    fengqiao: { bg: 'linear-gradient(135deg, #D8DCE8 0%, #B8C0D4 100%)', accent: '#C4A35A' },
+    jinshan: { bg: 'linear-gradient(135deg, #E0D5C8 0%, #C8BDA8 100%)', accent: '#B85450' },
+    jiankang: { bg: 'linear-gradient(135deg, #D4D0CC 0%, #BCB4AC 100%)', accent: '#5B8FA8' },
+    huangzhou: { bg: 'linear-gradient(135deg, #D8D4CC 0%, #C0B8A8 100%)', accent: '#C4A35A' },
+    wushan: { bg: 'linear-gradient(135deg, #D0D8E0 0%, #A8B8CC 100%)', accent: '#B85450' },
+    kuizhou: { bg: 'linear-gradient(135deg, #D8D0C8 0%, #C0B4A8 100%)', accent: '#C4A35A' },
+    shuzhou: { bg: 'linear-gradient(135deg, #C8D8C4 0%, #A8B8A0 100%)', accent: '#7A9E7E' }
+  };
+
+  grid.innerHTML = stations.map(function(s, i) {
+    var tc = themeColors[s.id] || themeColors.linan;
+    return '<div class="gallery-card" onclick="generateDailyCard(\'' + s.id + '\')" style="animation-delay:' + (i * 0.08) + 's">' +
+      '<div class="gc-visual" style="background:' + tc.bg + '">' +
+        '<div class="gc-accent" style="background:' + tc.accent + '"></div>' +
+        '<div class="gc-seal-mini">入<br>蜀<br>记</div>' +
+        '<div class="gc-station-name">' + s.name + '</div>' +
+        '<div class="gc-place">' + s.modernName + '</div>' +
+        '<div class="gc-poem-line">' + (s.poem.lines[0] || '') + '</div>' +
+      '</div>' +
+      '<div class="gc-label">' +
+        '<span class="gc-index">' + (visited.indexOf(s.id) + 1) + '</span>' +
+        '<span class="gc-action">点击生成诗签</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 // ==================== 成就 ====================
