@@ -77,6 +77,7 @@ function doShowView(viewName) {
     setTimeout(() => target.classList.remove('view-enter'), 550);
   }
   state.currentView = viewName;
+  SFX.playPageTurn();
 
   const stationView = document.getElementById('view-station');
   if (stationView) {
@@ -149,6 +150,7 @@ function openStation(stationId) {
     saveState();
     updateProgress();
     showToast(`已解锁：${station.name}`);
+    SFX.playUnlock();
 
     /* 雾散 + 卡片解锁动画 */
     var stationCard = document.querySelector('.station-card[data-station-id="' + stationId + '"]');
@@ -163,6 +165,7 @@ function openStation(stationId) {
       state.collectedFragments.push(f);
       saveState();
       updateProgress();
+      SFX.playCollect();
     }
   });
 
@@ -392,6 +395,7 @@ function answerQuiz(quizIndex, optionIndex) {
     options[optionIndex].classList.add('correct');
     state.quizCorrect++;
     showToast('✅ 回答正确！');
+    SFX.playCorrect();
     showBubble('答对了！不愧是诗旅达人～', 'liuxiaoliu', 'cheer');
     /* 陆小六点头 */
     var bubbleAvatar = document.querySelector('.bubble-avatar');
@@ -403,6 +407,7 @@ function answerQuiz(quizIndex, optionIndex) {
     options[optionIndex].classList.add('wrong');
     options[correctIdx].classList.add('correct');
     showToast('❌ 答错了，正确答案已标出');
+    SFX.playWrong();
     showBubble('没关系，记住这首诗就好～', 'liuxiaoliu', 'think');
     document.getElementById('quiz-hint').classList.add('show');
   }
