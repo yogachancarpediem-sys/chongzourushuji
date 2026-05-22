@@ -50,12 +50,31 @@ function startJourney() {
 }
 
 function showView(viewName) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  var prevView = state.currentView;
+
+  /* 驿站详情页 → 其他页面：卷轴收起动画 */
+  if (prevView === 'station' && viewName !== 'station') {
+    var stationView = document.getElementById('view-station');
+    if (stationView && stationView.classList.contains('active')) {
+      stationView.classList.add('view-exit');
+      setTimeout(function() {
+        doShowView(viewName);
+      }, 350);
+      state.currentView = viewName;
+      return;
+    }
+  }
+
+  doShowView(viewName);
+}
+
+function doShowView(viewName) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active', 'view-exit'));
   const target = document.getElementById('view-' + viewName);
   if (target) {
     target.classList.add('active');
     target.classList.add('view-enter');
-    setTimeout(() => target.classList.remove('view-enter'), 400);
+    setTimeout(() => target.classList.remove('view-enter'), 550);
   }
   state.currentView = viewName;
 
@@ -96,9 +115,11 @@ function renderMap() {
     const visited = state.visitedStations.includes(station.id);
     const card = document.createElement('div');
     card.className = 'station-card' + (visited ? ' visited' : '');
+    card.setAttribute('data-station-id', station.id);
     card.onclick = () => openStation(station.id);
 
     card.innerHTML = `
+      <div class="station-fog"></div>
       <div class="station-dot">${visited ? '✓' : (index + 1)}</div>
       <div class="station-info">
         <div class="station-name">${station.name}</div>
@@ -121,11 +142,20 @@ function openStation(stationId) {
 
   state.currentStationId = stationId;
 
-  if (!state.visitedStations.includes(stationId)) {
+  var isFirstVisit = !state.visitedStations.includes(stationId);
+
+  if (isFirstVisit) {
     state.visitedStations.push(stationId);
     saveState();
     updateProgress();
     showToast(`已解锁：${station.name}`);
+
+    /* 雾散 + 卡片解锁动画 */
+    var stationCard = document.querySelector('.station-card[data-station-id="' + stationId + '"]');
+    if (stationCard) {
+      stationCard.classList.add('visited', 'unlocking');
+      setTimeout(function() { stationCard.classList.remove('unlocking'); }, 1800);
+    }
   }
 
   station.fragments.forEach(f => {
@@ -257,6 +287,24 @@ function openStation(stationId) {
 
   showView('station');
 
+  /* 首次解锁 — 角色跳跃微动效 */
+  if (isFirstVisit) {
+    setTimeout(function() {
+      var mainChar = document.querySelector('.interaction-img-main');
+      var catChar = document.querySelector('.interaction-img-cat');
+      if (mainChar) {
+        mainChar.classList.add('unlock-jump');
+        setTimeout(function() { mainChar.classList.remove('unlock-jump'); }, 700);
+      }
+      if (catChar) {
+        setTimeout(function() {
+          catChar.classList.add('cat-hop');
+          setTimeout(function() { catChar.classList.remove('cat-hop'); }, 500);
+        }, 150);
+      }
+    }, 200);
+  }
+
   const dialogues = [
     `到了${station.name}！${station.scenery[0]}一定要去看看～`,
     `你知道吗？${station.name}也就是现在的${station.modernName.split('·')[1] || station.modernName}。`,
@@ -345,6 +393,12 @@ function answerQuiz(quizIndex, optionIndex) {
     state.quizCorrect++;
     showToast('✅ 回答正确！');
     showBubble('答对了！不愧是诗旅达人～', 'liuxiaoliu', 'cheer');
+    /* 陆小六点头 */
+    var bubbleAvatar = document.querySelector('.bubble-avatar');
+    if (bubbleAvatar) {
+      bubbleAvatar.classList.add('quiz-nod');
+      setTimeout(function() { bubbleAvatar.classList.remove('quiz-nod'); }, 600);
+    }
   } else {
     options[optionIndex].classList.add('wrong');
     options[correctIdx].classList.add('correct');
