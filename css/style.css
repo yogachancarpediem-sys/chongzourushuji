@@ -497,6 +497,92 @@ body {
   50% { opacity: 0.8; transform: scale(1.15); }
 }
 
+/* 轻触启程提示 */
+.opening-tap-hint {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  animation: tapHintPulse 2.2s ease-in-out infinite;
+  transition: opacity 0.6s var(--ease-soft);
+}
+.opening-tap-hint.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.tap-hint-text {
+  font-family: var(--font-body);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  color: var(--ink);
+  opacity: 0.45;
+}
+.tap-hint-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  opacity: 0.5;
+  animation: tapDotBounce 1.6s ease-in-out infinite;
+}
+@keyframes tapHintPulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes tapDotBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.3; }
+  50% { transform: translateY(4px); opacity: 0.7; }
+}
+
+/* content-ready 后隐藏启程提示 */
+#opening.content-ready .opening-tap-hint {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+/* ---- 手机端开场页适配 ---- */
+@media (max-width: 640px) {
+  #opening {
+    justify-content: flex-start;
+  }
+  .opening-content {
+    padding-top: calc(8px + var(--safe-top));
+    padding-bottom: calc(90px + var(--safe-bottom));
+    min-height: auto;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  .title-group {
+    margin-top: calc(6vh + var(--safe-top));
+    margin-bottom: 12px;
+  }
+  .opening-tagline {
+    font-size: 0.82rem;
+    line-height: 1.7;
+    max-width: 300px;
+  }
+  .route-stream {
+    margin: 8px 0 10px;
+  }
+  .opening-tap-hint {
+    bottom: 36px;
+  }
+  .opening-glow {
+    top: 30%;
+    width: 240px;
+    height: 140px;
+    margin-left: -120px;
+    margin-top: -70px;
+  }
+}
+
 /* ---- 标题组 ---- */
 .title-group {
   margin-bottom: 20px;

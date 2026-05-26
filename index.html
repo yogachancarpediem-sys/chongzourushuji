@@ -21,7 +21,7 @@
   <script async src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='8' fill='%23C4A35A'/><text x='50' y='68' font-size='60' text-anchor='middle' font-family='serif' fill='%23F5F0E6'>蜀</text></svg>">
   <title>重走《入蜀记》：陆小六的奇幻诗旅</title>
-  <link rel="stylesheet" href="css/style.css?v=50">
+  <link rel="stylesheet" href="css/style.css?v=52">
   <link rel="preconnect" href="https://fonts.loli.net">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=Ma+Shan+Zheng&display=swap" rel="stylesheet" onerror="this.remove()">
@@ -57,6 +57,12 @@
 
     <!-- WebGL 着色器背景 -->
     <canvas id="shader-canvas" class="shader-canvas"></canvas>
+
+    <!-- 轻触启程提示（点击后 BGM 渐入） -->
+    <div class="opening-tap-hint" id="opening-tap-hint">
+      <span class="tap-hint-text">轻触屏幕 · 启程</span>
+      <span class="tap-hint-dot"></span>
+    </div>
 
     <div class="opening-content">
       <!-- 标题区 -->
@@ -258,13 +264,13 @@
     </div>
   </section>
 </body>
-<script src="js/data.js?v=30"></script>
+<script src="js/data.js?v=31"></script>
 <script src="js/shader-bg.js?v=23"></script>
 <script src="js/sfx.js?v=1"></script>
-<script src="js/tts.js?v=1"></script>
-<script src="js/ambient.js?v=1"></script>
+<script src="js/tts.js?v=4"></script>
+<script src="js/ambient.js?v=6"></script>
 <script src="js/idle-events.js?v=2"></script>
-<script src="js/app.js?v=51"></script>
+<script src="js/app.js?v=58"></script>
   <!-- 分享卡片生成 -->
   <script src="https://cdn.bootcdn.net/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <script>

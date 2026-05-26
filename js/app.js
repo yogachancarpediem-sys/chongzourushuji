@@ -96,33 +96,64 @@ function startJourney() {
   showBubble('欢迎踏上诗旅！沿着长江，我们去追寻陆游的诗心吧～');
   const bgm = document.getElementById('bgm');
   if (bgm && !bgmPlaying) {
+    bgm.volume = 0;
     bgm.play().then(() => {
       bgmPlaying = true;
       updateBGMBtn();
+      fadeInBGM(bgm);
     }).catch(() => {});
+  } else if (bgm && bgmPlaying && bgm.volume < bgmTargetVol) {
+    // 如果正在渐入中但音量还没到目标（极少见），确保继续渐入
+    fadeInBGM(bgm);
   }
   /* 启动闲置事件系统 */
   if (window.IdleEvents) IdleEvents.start();
 }
 
 /* 朗读辅助函数 */
-window._ttsReadDiary = function(stationId) {
-  var station = STATIONS.find(function(s) { return s.id === stationId; });
-  if (station) {
-    var text = station.diary.replace(/<[^>]*>/g, '').replace(/\n/g, '，');
-    TTS.speakDiary(text);
+window._ttsReadDiary = function(stationId, btn) {
+  if (TTS.isSpeaking()) {
+    TTS.togglePause();
+    if (btn) btn.textContent = TTS.isPaused() ? '▶' : '⏸';
+    return;
   }
+  if (btn) btn.textContent = '⏸';
+  TTS.speakDiary(stationId, { onEnd: function() { if (btn) btn.textContent = '🔊'; } });
 };
 
-window._ttsReadPoem = function(stationId) {
-  var station = STATIONS.find(function(s) { return s.id === stationId; });
-  if (station) {
-    TTS.speakPoem(station.poem.title, station.poem.author, station.poem.lines);
+window._ttsReadPoem = function(stationId, btn) {
+  if (TTS.isSpeaking()) {
+    TTS.togglePause();
+    if (btn) btn.textContent = TTS.isPaused() ? '▶' : '⏸';
+    return;
   }
+  if (btn) btn.textContent = '⏸';
+  TTS.speakPoem(stationId, { onEnd: function() { if (btn) btn.textContent = '🔊'; } });
 };
 
 window._ttsStop = function() {
   TTS.stop();
+};
+
+/* 朗读开关：点击同一内容时暂停/恢复，不同内容时切换 */
+window._ttsToggle = function(btn, speakFn) {
+  if (TTS.isSpeaking()) {
+    TTS.togglePause();
+    if (btn) {
+      btn.textContent = TTS.isPaused() ? '▶' : '⏸';
+    }
+  } else {
+    if (btn) btn.textContent = '⏸';
+    speakFn();
+    // 轮询等待朗读结束，自动恢复图标
+    (function waitEnd() {
+      if (TTS.isSpeaking()) {
+        setTimeout(waitEnd, 250);
+      } else if (btn) {
+        btn.textContent = '🔊';
+      }
+    })();
+  }
 };
 
 function showView(viewName) {
@@ -343,11 +374,11 @@ function openStation(stationId) {
 
     <div class="detail-section" id="diary-section">
       <div class="section-label">
-        <span>📜 陆游手记</span>
-        <button class="tts-btn" onclick="event.stopPropagation();_ttsReadDiary('${station.id}')" title="朗读日记">🔊</button>
+        <span>${station.id === 'shuzhou' ? '📜 蜀州岁月' : '📜 陆游手记'}</span>
+        <button class="tts-btn" onclick="event.stopPropagation();_ttsReadDiary('${station.id}',this)" title="朗读日记">🔊</button>
       </div>
-      <p class="diary-intro">以下为《入蜀记》原文，陆游亲笔所记——</p>
-      <p class="diary-text">${station.diary.replace(/\n/g, '<br>')}</p>
+      <p class="diary-intro">${station.id === 'shuzhou' ? '终章·蜀中之蜀的诗酒年华' : '以下为《入蜀记》原文，陆游亲笔所记——'}</p>
+      ${station.diary.split(/\n\n+/).map(function(para) { return '<p class="diary-text">' + para.replace(/\n/g, '<br>').trim() + '</p>'; }).join('')}
     </div>
 
     ${station.fengwu && station.fengwu.length > 0 ? `
@@ -386,7 +417,7 @@ function openStation(stationId) {
     <div class="detail-section" id="poem-section">
       <div class="section-label">
         <span>📖 诗心共鸣</span>
-        <button class="tts-btn" onclick="event.stopPropagation();_ttsReadPoem('${station.id}')" title="朗读诗歌">🔊</button>
+        <button class="tts-btn" onclick="event.stopPropagation();_ttsReadPoem('${station.id}',this)" title="朗读诗歌">🔊</button>
       </div>
       <div class="poem-card">
         <div class="poem-title-author">${station.poem.title} · ${station.poem.author}</div>
@@ -589,7 +620,7 @@ function renderPoetryList() {
   STATIONS.forEach(s => {
     if (!seen.has(s.poem.title + s.poem.author)) {
       seen.add(s.poem.title + s.poem.author);
-      poems.push({ ...s.poem, stationName: s.name });
+      poems.push({ ...s.poem, stationName: s.name, stationId: s.id });
     }
   });
 
@@ -601,7 +632,7 @@ function renderPoetryList() {
           (p.lines[0] || '') + (p.lines[1] ? ' ' + p.lines[1] : '') +
         '</div>' +
       '</div>' +
-      '<button class="tts-btn tts-btn-sm" onclick="event.stopPropagation();TTS.speakPoem(\'' + p.title + '\', \'' + p.author + '\', ' + JSON.stringify(p.lines) + ')" title="朗读">🔊</button>' +
+      '<button class="tts-btn tts-btn-sm" onclick="event.stopPropagation();_ttsToggle(this,function(){TTS.speakPoem(\'' + p.stationId + '\')})" title="朗读">🔊</button>' +
     '</div>';
   }).join('');
 }
@@ -843,20 +874,56 @@ function setCharacterPose(elementId, character, pose) {
 
 // ==================== 背景音乐 ====================
 let bgmPlaying = false;
+let bgmFading = false;       // 渐入进行中
+let bgmTargetVol = 0.3;      // 目标音量
+let bgmRafId = null;         // fade RAF id
+let _bgmStarted = false;     // 防 touch+click 双击
 
 function initBGM() {
-  const bgm = document.getElementById('bgm');
+  var bgm = document.getElementById('bgm');
   if (!bgm) return;
-  bgm.volume = 0.3;
-  document.addEventListener('click', function firstClick() {
-    if (!bgmPlaying) {
-      bgm.play().then(() => {
-        bgmPlaying = true;
-        updateBGMBtn();
-      }).catch(() => {});
+  bgm.volume = 0;
+
+  // 首次用户交互时启动 BGM 渐入（可在开场视频播放期间触发）
+  var hint = document.getElementById('opening-tap-hint');
+  function startBGM() {
+    if (_bgmStarted) return;
+    _bgmStarted = true;
+    bgm.play().then(function() {
+      bgmPlaying = true;
+      updateBGMBtn();
+      fadeInBGM(bgm);
+    }).catch(function() {});
+    if (hint) hint.classList.add('hidden');
+    document.removeEventListener('click', onClick);
+    document.removeEventListener('touchstart', onTouch);
+  }
+  function onClick(e) { startBGM(); }
+  function onTouch(e) { startBGM(); }
+  document.addEventListener('click', onClick, { once: true });
+  document.addEventListener('touchstart', onTouch, { once: true });
+}
+
+/** BGM 从 0 渐入到目标音量 */
+function fadeInBGM(bgm) {
+  if (bgmFading) return;
+  bgmFading = true;
+  cancelAnimationFrame(bgmRafId);
+  var startTime = performance.now();
+  var duration = 2500; // 2.5秒渐入
+  (function step(now) {
+    var elapsed = now - startTime;
+    var t = Math.min(elapsed / duration, 1);
+    // ease-out
+    var vol = bgmTargetVol * (1 - Math.pow(1 - t, 3));
+    bgm.volume = vol;
+    if (t < 1) {
+      bgmRafId = requestAnimationFrame(step);
+    } else {
+      bgm.volume = bgmTargetVol;
+      bgmFading = false;
     }
-    document.removeEventListener('click', firstClick);
-  }, { once: true });
+  })(startTime);
 }
 
 function toggleBGM() {
@@ -865,10 +932,14 @@ function toggleBGM() {
   if (bgmPlaying) {
     bgm.pause();
     bgmPlaying = false;
+    bgmFading = false;
+    cancelAnimationFrame(bgmRafId);
   } else {
+    bgm.volume = 0;
     bgm.play().then(() => {
       bgmPlaying = true;
       updateBGMBtn();
+      fadeInBGM(bgm);
     }).catch(() => {
       showToast('播放失败，请点击页面任意位置后再试');
     });
@@ -1110,7 +1181,7 @@ var STATION_CARD_LINES = {
   huangzhou:[0, 1],   // 大江东去，浪淘尽，千古风流人物
   wushan:   [0, 1],   // 昔者楚襄王与宋玉游于云梦之台……
   kuizhou:  [2, 3],   // 无边落木萧萧下，不尽长江滚滚来
-  shuzhou:  [6, 7]    // 江湖四十余年梦，岂信人间有蜀州
+  shuzhou:  [0, 1]    // 竹里房栊一径深，静愔愔。
 };
 
 /* 驿站主题色 */
