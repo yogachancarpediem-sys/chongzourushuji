@@ -31,6 +31,60 @@ function saveState() {
 }
 
 // ==================== 页面切换 ====================
+/* 开场视频：ended + rAF 停滞检测 + 超时兜底；转场后启动 shader */
+(function setupVideoTransition() {
+  var video = document.getElementById('opening-video');
+  var opening = document.getElementById('opening');
+  if (!video || !opening) return;
+
+  var transitioning = false;
+  var MAX_WAIT = 10;
+
+  function showContent() {
+    if (transitioning) return;
+    transitioning = true;
+    opening.classList.add('content-ready');
+    // 视频播完后再启动水墨 shader（避免 WebGL 干扰视频解码）
+    if (typeof initOpeningShader === 'function') {
+      initOpeningShader();
+    }
+  }
+
+  video.addEventListener('ended', function() {
+    showContent();
+  }, { once: true });
+
+  var lastTime = -1;
+  var stallFrames = 0;
+  (function poll() {
+    if (transitioning) return;
+    var t = video.currentTime;
+    var d = video.duration || 0;
+
+    if (t >= 7) {
+      showContent();
+      return;
+    }
+
+    if (!video.paused && t === lastTime && t > 0.3) {
+      stallFrames++;
+      if (stallFrames > 120) {
+        showContent();
+        return;
+      }
+    } else {
+      stallFrames = 0;
+    }
+    lastTime = t;
+
+    requestAnimationFrame(poll);
+  })();
+
+  setTimeout(function() {
+    showContent();
+  }, MAX_WAIT * 1000);
+})();
+
 function startJourney() {
   pauseOpeningShader();
   if (window._stopGoldBoat) window._stopGoldBoat();
@@ -47,6 +101,8 @@ function startJourney() {
       updateBGMBtn();
     }).catch(() => {});
   }
+  /* 启动闲置事件系统 */
+  if (window.IdleEvents) IdleEvents.start();
 }
 
 /* 朗读辅助函数 */
@@ -89,6 +145,15 @@ function showView(viewName) {
 }
 
 function doShowView(viewName) {
+  /* 离开驿站视图时退出沉浸模式 */
+  if (viewName !== 'station' && _immersiveActive) {
+    _immersiveActive = false;
+    var sv = document.getElementById('view-station');
+    if (sv) sv.classList.remove('immersive-mode');
+    var ib = document.getElementById('immersive-btn');
+    if (ib) ib.innerHTML = '🌙 沉浸阅读';
+  }
+
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active', 'view-exit'));
   const target = document.getElementById('view-' + viewName);
   if (target) {
@@ -109,6 +174,9 @@ function doShowView(viewName) {
   if (viewName === 'achievements') renderAchievements();
   if (viewName === 'gallery') renderGallery();
   if (viewName === 'map') renderMap();
+
+  /* 闲置事件系统：地图/驿站视图激活，其他视图暂停 */
+  if (window.IdleEvents) IdleEvents.onViewChange(viewName);
 
   /* 非地图/驿站视图时隐藏角色气泡 */
   var bubble = document.getElementById('character-bubble');
@@ -155,6 +223,50 @@ function renderMap() {
 
     list.appendChild(card);
   });
+
+  /* 初始化视差滚动 */
+  initParallax();
+}
+
+/* 视差滚动 */
+var _parallaxRaf = null;
+function initParallax() {
+  /* 移动端降级：只用2层 */
+  var isMobile = window.innerWidth < 768;
+
+  var mountains = document.getElementById('parallax-mountains');
+  var river = document.querySelector('.river-bg');
+  var scrollEl = document.getElementById('view-map');
+
+  if (!scrollEl) return;
+
+  /* 清理旧监听 */
+  if (_parallaxRaf) {
+    cancelAnimationFrame(_parallaxRaf);
+    _parallaxRaf = null;
+  }
+
+  function update() {
+    if (state.currentView !== 'map') {
+      _parallaxRaf = requestAnimationFrame(update);
+      return;
+    }
+
+    var scrollTop = scrollEl.scrollTop;
+    var factorM = isMobile ? 0.08 : 0.15;
+    var factorR = isMobile ? 0.18 : 0.32;
+
+    if (mountains) {
+      mountains.style.transform = 'translate3d(0, ' + (-scrollTop * factorM) + 'px, 0)';
+    }
+    if (river) {
+      river.style.transform = 'translateX(-50%) translate3d(0, ' + (-scrollTop * factorR) + 'px, 0)';
+    }
+
+    _parallaxRaf = requestAnimationFrame(update);
+  }
+
+  _parallaxRaf = requestAnimationFrame(update);
 }
 
 // ==================== 驿站详情 ====================
@@ -206,6 +318,12 @@ function openStation(stationId) {
     shuzhou: 'cute'
   };
   const stationPose = stationPoses[stationId] || 'default';
+  /* 环境音切换 */
+  if (window.Ambient && station.ambientSound) {
+    Ambient.switchTo(station.ambientSound);
+  }
+
+  const moodText = station.moodText || '';
   const detail = document.getElementById('station-detail');
   detail.innerHTML = `
     <div class="station-atmosphere"></div>
@@ -215,20 +333,25 @@ function openStation(stationId) {
       <div class="detail-date">${station.date}</div>
       <div class="detail-mood">${station.mood || ''}</div>
       <div class="detail-divider"></div>
-      <p class="detail-desc">${station.description}</p>
-      <button class="daily-card-btn" onclick="generateDailyCard('${stationId}')">📷 生成诗签</button>
+      ${moodText ? '<p class="detail-moodtext">' + moodText + '</p>' : '<p class="detail-desc">' + station.description + '</p>'}
+      ${station.description ? '<div class="detail-kaoju" id="detail-kaoju"><button class="kaoju-toggle" onclick="toggleKaoju()">📖 背景考据 <span class="kaoju-arrow">▾</span></button><p class="kaoju-text" id="kaoju-text">' + station.description + '</p></div>' : ''}
+      <div class="detail-hero-actions">
+        <button class="daily-card-btn" onclick="generateDailyCard('${stationId}')">📷 生成诗签</button>
+        <button class="immersive-btn" id="immersive-btn" onclick="toggleImmersive()">🌙 沉浸阅读</button>
+      </div>
     </div>
 
-    <div class="detail-section">
+    <div class="detail-section" id="diary-section">
       <div class="section-label">
         <span>📜 陆游手记</span>
         <button class="tts-btn" onclick="event.stopPropagation();_ttsReadDiary('${station.id}')" title="朗读日记">🔊</button>
       </div>
+      <p class="diary-intro">以下为《入蜀记》原文，陆游亲笔所记——</p>
       <p class="diary-text">${station.diary.replace(/\n/g, '<br>')}</p>
     </div>
 
     ${station.fengwu && station.fengwu.length > 0 ? `
-    <div class="detail-section">
+    <div class="detail-section" id="fengwu-section">
       <div class="section-label">📖 入蜀风物志</div>
       <div class="fengwu-list">
         ${station.fengwu.map(f => `
@@ -244,7 +367,7 @@ function openStation(stationId) {
     </div>
     ` : ''}
 
-    <div class="detail-section">
+    <div class="detail-section" id="scenery-section">
       <div class="section-label">🏔️ 诗旅风物</div>
       <div class="scenery-tags">
         ${station.scenery.map(s => `<span class="scenery-tag">${s}</span>`).join('')}
@@ -260,7 +383,7 @@ function openStation(stationId) {
       ` : ''}
     </div>
 
-    <div class="detail-section">
+    <div class="detail-section" id="poem-section">
       <div class="section-label">
         <span>📖 诗心共鸣</span>
         <button class="tts-btn" onclick="event.stopPropagation();_ttsReadPoem('${station.id}')" title="朗读诗歌">🔊</button>
@@ -274,7 +397,7 @@ function openStation(stationId) {
       </div>
     </div>
 
-    <div class="detail-section">
+    <div class="detail-section" id="ancient-modern-section">
       <div class="section-label">🔄 古今对照</div>
       <div class="am-section">
         <div class="am-row am-ancient">
@@ -292,7 +415,7 @@ function openStation(stationId) {
       </div>
     </div>
 
-    <div class="detail-section">
+    <div class="detail-section" id="fragments-section">
       <div class="section-label">✨ 诗心碎片</div>
       <div class="fragments-row">
         ${station.fragments.map(f => `
@@ -304,7 +427,7 @@ function openStation(stationId) {
       </div>
     </div>
 
-    <div class="detail-section character-interaction" style="text-align: center; padding: 24px;">
+    <div class="detail-section character-interaction" id="character-section" style="text-align: center; padding: 24px;">
       <div class="interaction-characters">
         <img src="${CHARACTER_ASSETS.liuxiaoliu[stationPose] || CHARACTER_ASSETS.liuxiaoliu.default}" alt="陆小六" class="interaction-img interaction-img-main" loading="lazy">
         <img src="${CHARACTER_ASSETS.linu[CHARACTER_ASSETS.stationCat[stationId] || 'default']}" alt="狸奴" class="interaction-img interaction-img-cat" loading="lazy">
@@ -636,6 +759,35 @@ function showToast(text) {
   setTimeout(() => toast.classList.remove('show'), 2000);
 }
 
+/* 背景考据折叠/展开 */
+function toggleKaoju() {
+  var text = document.getElementById('kaoju-text');
+  var arrow = document.querySelector('.kaoju-arrow');
+  if (!text) return;
+  var isOpen = text.classList.toggle('open');
+  if (arrow) arrow.textContent = isOpen ? '▴' : '▾';
+}
+
+/* 沉浸阅读模式 */
+var _immersiveActive = false;
+function toggleImmersive() {
+  _immersiveActive = !_immersiveActive;
+  var stationView = document.getElementById('view-station');
+  var btn = document.getElementById('immersive-btn');
+
+  if (stationView) {
+    if (_immersiveActive) {
+      stationView.classList.add('immersive-mode');
+    } else {
+      stationView.classList.remove('immersive-mode');
+    }
+  }
+  if (btn) {
+    btn.innerHTML = _immersiveActive ? '☀️ 退出沉浸' : '🌙 沉浸阅读';
+  }
+  /* 环境音在沉浸状态下保持 */
+}
+
 // ==================== 角色素材映射 ====================
 const CHARACTER_ASSETS = {
   liuxiaoliu: {
@@ -730,6 +882,16 @@ function updateBGMBtn() {
   const icon = btn.querySelector('.bgm-icon');
   if (icon) {
     icon.textContent = bgmPlaying ? '🔊' : '🔇';
+  }
+}
+
+/* 环境音开关 */
+function toggleAmbient() {
+  var isActive = Ambient.toggle();
+  var btn = document.getElementById('ambient-toggle');
+  if (btn) {
+    var icon = btn.querySelector('.ambient-icon');
+    if (icon) icon.textContent = isActive ? '🌊' : '🌿';
   }
 }
 

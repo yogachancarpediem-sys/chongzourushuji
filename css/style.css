@@ -25,6 +25,26 @@
   --radius-sm: 8px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* === Design Token: 动画系统 === */
+  --ease-out: var(--ease-out);
+  --ease-in-out: var(--ease-in-out);
+  --ease-soft: var(--ease-soft);
+  --dur-fast: 0.2s;
+  --dur-normal: 0.3s;
+  --dur-slow: 0.55s;
+  --dur-slide: 0.8s;
+  --dur-float: 6s;
+  --dur-breathe: 4s;
+
+  /* === Design Token: 视觉层级 (z-index) === */
+  --z-bg: 0;
+  --z-scene: 10;
+  --z-float: 20;
+  --z-overlay: 50;
+  --z-ui: 100;
+  --z-modal: 200;
+  --z-toast: 300;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -80,7 +100,7 @@ body {
 
 /* 卷轴展开 — 驿站详情页入场动画 */
 #view-station.view-enter {
-  animation: scrollUnfurl 0.55s cubic-bezier(0.4, 0, 0.15, 1);
+  animation: scrollUnfurl 0.55s var(--ease-in-out);
 }
 @keyframes scrollUnfurl {
   0% { 
@@ -98,7 +118,7 @@ body {
 }
 /* 返回地图时反向卷轴（收起） */
 #view-station.view-exit {
-  animation: scrollRoll 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: scrollRoll 0.35s var(--ease-soft) forwards;
 }
 @keyframes scrollRoll {
   0% { clip-path: inset(0 0 0 0); opacity: 1; }
@@ -159,7 +179,7 @@ body {
   cursor: pointer;
   margin: 12px 16px;
   margin-top: calc(12px + var(--safe-top));
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
   min-height: 44px;
   -webkit-user-select: none;
   user-select: none;
@@ -207,7 +227,7 @@ body {
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: all 0.4s var(--ease-out);
   min-height: 44px;
   -webkit-user-select: none;
   user-select: none;
@@ -251,7 +271,7 @@ body {
   inset: 0;
   width: 100%;
   height: 100%;
-  z-index: 0;
+  z-index: 2;
   display: block;
   pointer-events: none;
 }
@@ -261,15 +281,8 @@ body {
 }
 
 #opening .opening-content {
-  z-index: 10;
+  z-index: var(--z-scene);
   position: relative;
-}
-
-/* shader 激活时：隐藏旧的 CSS 背景特效，让 shader 画面透出来 */
-#opening.shader-active .ink-wash,
-#opening.shader-active .mountain-silhouette,
-#opening.shader-active .floating-particles {
-  display: none;
 }
 
 /* shader 激活时：文字改为浅色 */
@@ -290,21 +303,9 @@ body {
 #opening.shader-active .subtitle {
   color: rgba(196,163,90,0.85);
 }
-#opening.shader-active .description {
-  color: rgba(230,225,215,0.8);
-  text-shadow: 0 1px 8px rgba(0,0,0,0.3);
-}
-#opening.shader-active .route-info {
-  color: rgba(200,195,185,0.45);
-}
-#opening.shader-active .route-stops {
-  color: rgba(196,163,90,0.6);
-}
-#opening.shader-active .character-name {
-  color: rgba(245,240,230,0.9);
-}
-#opening.shader-active .character-role {
-  color: rgba(200,195,185,0.6);
+#opening.shader-active .opening-tagline {
+  color: rgba(220,215,205,0.7);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.2);
 }
 #opening.shader-active .start-btn {
   background: linear-gradient(135deg, rgba(196,163,90,0.9), rgba(180,140,60,0.9));
@@ -326,6 +327,34 @@ body {
   position: relative;
   overflow: hidden;
   background: linear-gradient(160deg, #F5F0E6 0%, #EDE5D8 40%, #E8DFD0 100%);
+}
+
+/* 开场视频背景 */
+.opening-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  background: #F5F0E6; /* 加载前占位 */
+  transition: opacity 2s var(--ease-soft);
+}
+/* 转场: 视频淡出 + 遮罩层接住 */
+#opening.content-ready .opening-video {
+  opacity: 0;
+}
+
+/* 视频遮罩 — 视频播放期间透明，内容出现后渐变 */
+.opening-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(245, 240, 230, 0.35);
+  backdrop-filter: blur(1px);
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.8s var(--ease-soft);
 }
 
 .opening-bg {
@@ -410,22 +439,62 @@ body {
 
 .opening-content {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-scene);
   text-align: center;
   padding: 48px 20px 32px;
   padding-top: calc(48px + var(--safe-top));
   padding-bottom: calc(20px + var(--safe-bottom));
-  animation: fadeInUp 1.2s ease-out;
   max-width: 560px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   min-height: 100%;
+  gap: 24px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s var(--ease-soft);
 }
 
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+/* 安静开场 — tagline（视频结束后由 content-ready 触发动效） */
+.opening-tagline {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--ink-faint);
+  line-height: 2;
+  max-width: 420px;
+  margin: 0 auto;
+  opacity: 0;
+}
+@keyframes taglineFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 呼吸柔光 — 标题背景光晕 */
+.opening-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 320px;
+  height: 200px;
+  margin-left: -160px;
+  margin-top: -140px;
+  background: radial-gradient(ellipse, rgba(196,163,90,0.08), transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: -1;
+  animation: glowBreathe 5s ease-in-out infinite;
+}
+@keyframes glowBreathe {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.15); }
 }
 
 /* ---- 标题组 ---- */
@@ -524,6 +593,23 @@ body {
   letter-spacing: 0.5px;
 }
 
+/* ==================== 视频结束 → 内容渐入 ==================== */
+#opening.content-ready .opening-overlay { opacity: 1; }
+#opening.content-ready .opening-content {
+  opacity: 1; pointer-events: auto;
+  animation: fadeInUp 0.6s ease-out;
+}
+#opening.content-ready .opening-tagline {
+  animation: taglineFadeIn 0.7s 0.3s ease-out forwards;
+}
+#opening.content-ready .route-stream {
+  opacity: 0;
+  animation: taglineFadeIn 0.7s 0.6s ease-out forwards;
+}
+#opening.content-ready .start-btn {
+  animation: btnReveal 0.7s 1.0s ease-out forwards;
+}
+
 /* ---- 诗旅路线 · 竖向时间轴 ---- */
 /* ---- 诗旅路线 · 水墨流线 ---- */
 .route-stream {
@@ -555,7 +641,7 @@ body {
 
 .sl {
   font-family: var(--font-title);
-  font-size: 9px;
+  font-size: 11px;
   fill: var(--ink-faint);
   text-anchor: middle;
   opacity: 0.2;
@@ -588,7 +674,7 @@ body {
 .character-card {
   position: relative;
   width: 130px;
-  transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform 0.4s var(--ease-out);
   cursor: default;
 }
 
@@ -650,9 +736,15 @@ body {
   border-radius: 40px;
   cursor: pointer;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: all 0.4s var(--ease-out);
   letter-spacing: 6px;
   box-shadow: 0 4px 20px rgba(44,44,44,0.15);
+  opacity: 0;
+  transform: translateY(16px);
+}
+@keyframes btnReveal {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .start-btn:hover {
@@ -695,7 +787,7 @@ body {
   border-bottom: 1px solid rgba(44,44,44,0.08);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: var(--z-ui);
 }
 
 .logo-text {
@@ -729,7 +821,7 @@ body {
   cursor: pointer;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  transition: all 0.2s;
+  transition: all var(--dur-fast);
   position: relative;
   min-width: 44px;
   min-height: 44px;
@@ -787,6 +879,23 @@ body {
   padding: 16px;
 }
 
+/* 视差图层 */
+.parallax-mountains {
+  position: absolute;
+  left: 0;
+  top: -40px;
+  width: 100%;
+  height: calc(100% + 80px);
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform;
+}
+.mountains-svg {
+  width: 100%;
+  height: 100%;
+  opacity: 0.7;
+}
+
 .river-bg {
   position: absolute;
   left: 50%;
@@ -796,6 +905,8 @@ body {
   transform: translateX(-50%);
   opacity: 0.6;
   pointer-events: none;
+  z-index: 0;
+  will-change: transform;
 }
 
 .river-svg {
@@ -825,7 +936,7 @@ body {
   border: 1px solid rgba(44,44,44,0.06);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: all 0.4s var(--ease-out);
   position: relative;
   overflow: hidden;
 }
@@ -869,7 +980,7 @@ body {
   font-family: var(--font-title);
   font-size: 0.8rem;
   color: var(--accent-blue);
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
 }
 
 .station-card.visited .station-dot {
@@ -911,7 +1022,7 @@ body {
 .station-arrow {
   font-size: 1.2rem;
   color: var(--ink-faint);
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
 }
 
 .station-card:hover .station-arrow {
@@ -942,7 +1053,7 @@ body {
     radial-gradient(ellipse 65% 32% at 48% 78%, rgba(195, 208, 222, 0.18) 0%, transparent 62%),
     radial-gradient(ellipse 35% 25% at 85% 25%, rgba(210, 218, 228, 0.14) 0%, transparent 55%);
   opacity: 1;
-  transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 1.2s var(--ease-soft);
   animation: fogBreathe 7s ease-in-out infinite;
 }
 .station-card:not(.visited) .station-name,
@@ -998,7 +1109,7 @@ body {
   max-width: 500px;
   width: calc(100% - 32px);
   box-shadow: var(--shadow-soft);
-  z-index: 50;
+  z-index: var(--z-overlay);
   animation: bubbleUp 0.5s ease-out;
   -webkit-user-select: none;
   user-select: none;
@@ -1093,6 +1204,160 @@ body {
   margin: 0 auto 30px;
 }
 
+/* 感知型文本 — 文学短句，首屏主视觉 */
+.detail-moodtext {
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  color: var(--ink);
+  line-height: 2;
+  max-width: 560px;
+  margin: 0 auto 24px;
+  text-align: center;
+  opacity: 0.82;
+  letter-spacing: 1px;
+}
+
+/* 背景考据 — 折叠 */
+.detail-kaoju {
+  max-width: 560px;
+  margin: 0 auto 20px;
+  text-align: center;
+}
+.kaoju-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: 1px solid rgba(44,44,44,0.1);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: all var(--dur-fast) ease;
+}
+.kaoju-toggle:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+.kaoju-arrow {
+  font-size: 0.7rem;
+  transition: transform 0.25s ease;
+}
+.kaoju-text {
+  font-size: 0.85rem;
+  color: var(--ink-light);
+  line-height: 1.7;
+  margin-top: 10px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease, margin 0.4s ease, opacity var(--dur-normal) ease;
+  opacity: 0;
+}
+.kaoju-text.open {
+  max-height: 200px;
+  opacity: 1;
+  margin-top: 12px;
+}
+
+/* 日记引导语 */
+.diary-intro {
+  font-size: 0.75rem;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
+  font-style: italic;
+  opacity: 0.7;
+}
+
+/* Hero 底部按钮行 */
+.detail-hero-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+/* 沉浸阅读按钮 */
+.immersive-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: 1px solid rgba(44,44,44,0.1);
+  border-radius: 20px;
+  padding: 7px 18px;
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: all var(--dur-fast) ease;
+  min-height: 36px;
+}
+.immersive-btn:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+/* ========= 沉浸阅读模式 ========= */
+/* 隐藏 hero 中的文本内容，但保留按钮行 */
+#view-station.immersive-mode .detail-name,
+#view-station.immersive-mode .detail-modern,
+#view-station.immersive-mode .detail-date,
+#view-station.immersive-mode .detail-mood,
+#view-station.immersive-mode .detail-divider,
+#view-station.immersive-mode .detail-moodtext,
+#view-station.immersive-mode .detail-desc,
+#view-station.immersive-mode .detail-kaoju,
+#view-station.immersive-mode .station-atmosphere,
+#view-station.immersive-mode #fengwu-section,
+#view-station.immersive-mode #scenery-section,
+#view-station.immersive-mode #ancient-modern-section,
+#view-station.immersive-mode #fragments-section,
+#view-station.immersive-mode #character-section {
+  display: none;
+}
+
+/* 沉浸模式下按钮行紧凑排列，只保留沉浸切换按钮 */
+#view-station.immersive-mode .detail-hero-actions {
+  padding: 4px 0 8px;
+}
+#view-station.immersive-mode .daily-card-btn {
+  display: none;
+}
+
+/* 沉浸模式下，hero-actions 中的按钮小间距 */
+.detail-hero-actions .daily-card-btn {
+  margin-top: 0;
+}
+
+/* 沉浸模式纯色背景 */
+#view-station.immersive-mode {
+  background: var(--parchment) !important;
+  transition: background var(--dur-slide) ease;
+}
+
+/* 沉浸模式 — 文本放大 */
+#view-station.immersive-mode .station-detail {
+  padding-top: 12px;
+}
+#view-station.immersive-mode .diary-text {
+  font-size: 1.05rem;
+  line-height: 2.3;
+  border-left-width: 3px;
+  color: var(--ink);
+}
+#view-station.immersive-mode .poem-line {
+  font-size: 1.1rem;
+  line-height: 2.2;
+  letter-spacing: 2px;
+}
+#view-station.immersive-mode .diary-intro {
+  font-size: 0.8rem;
+}
+
 /* 详情卡片 */
 .detail-section {
   background: rgba(255,255,255,0.6);
@@ -1100,7 +1365,7 @@ body {
   border-radius: var(--radius);
   padding: 20px 24px;
   margin-bottom: 16px;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
 }
 
 .detail-section:hover {
@@ -1130,7 +1395,7 @@ body {
   background: rgba(255,255,255,0.5);
   cursor: pointer;
   font-size: 0.85rem;
-  transition: all 0.25s ease;
+  transition: all var(--dur-fast) ease;
   padding: 0;
   line-height: 1;
   flex-shrink: 0;
@@ -1437,7 +1702,7 @@ body {
 /* 角色切换过渡 */
 .interaction-img,
 .bubble-avatar img {
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: transform 0.3s ease, opacity var(--dur-normal) ease;
 }
 
 .interaction-img.switching,
@@ -1546,7 +1811,7 @@ body {
   font-size: 0.82rem;
   color: var(--ink-light);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
 }
 
 .fragment-item.collected {
@@ -1567,7 +1832,7 @@ body {
 .fragment-collect-anim {
   position: fixed;
   pointer-events: none;
-  z-index: 200;
+  z-index: var(--z-modal);
   font-size: 1.5rem;
   animation: fragmentFly 1s ease-out forwards;
 }
@@ -1662,7 +1927,7 @@ body {
   font-size: 1rem;
   color: var(--ink);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
   text-align: left;
 }
 
@@ -1729,7 +1994,7 @@ body {
   padding: 12px 28px;
   border-radius: 20px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
   min-height: 46px;
   touch-action: manipulation;
   -webkit-user-select: none;
@@ -1762,7 +2027,7 @@ body {
   border: 1px solid rgba(44,44,44,0.06);
   border-radius: var(--radius);
   padding: 20px;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
 }
 .pli-main {
   flex: 1;
@@ -1819,8 +2084,8 @@ body {
   cursor: pointer;
   border-radius: var(--radius-sm);
   overflow: hidden;
-  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1),
-              box-shadow 0.3s ease;
+  transition: transform 0.3s var(--ease-out),
+              box-shadow var(--dur-normal) ease;
   background: rgba(255,255,255,0.7);
   border: 1px solid rgba(44,44,44,0.06);
   animation: galleryFadeIn 0.5s ease both;
@@ -1968,7 +2233,7 @@ body {
   border-radius: var(--radius);
   padding: 16px;
   text-align: center;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
 }
 
 .achievement-card.locked {
@@ -2012,12 +2277,12 @@ body {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   cursor: pointer;
-  z-index: 200;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: 0 1px 6px rgba(44,44,44,0.06);
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
   padding: 0;
   -webkit-user-select: none;
   user-select: none;
@@ -2038,6 +2303,39 @@ body {
   line-height: 1;
 }
 
+/* 环境音开关 — 在 BGM 按钮下方 */
+.ambient-toggle {
+  position: fixed;
+  top: calc(108px + var(--safe-top));
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(44,44,44,0.08);
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  cursor: pointer;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 6px rgba(44,44,44,0.06);
+  transition: all var(--dur-normal);
+  padding: 0;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.ambient-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 10px rgba(44,44,44,0.12);
+}
+.ambient-icon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
 /* ==================== 通知 Toast ==================== */
 .toast {
   position: fixed;
@@ -2049,9 +2347,9 @@ body {
   padding: 10px 24px;
   border-radius: 20px;
   font-size: 0.85rem;
-  z-index: 300;
+  z-index: var(--z-toast);
   opacity: 0;
-  transition: all 0.4s;
+  transition: all var(--dur-slow);
   pointer-events: none;
 }
 
@@ -2098,6 +2396,7 @@ body {
   .detail-modern { font-size: 0.85rem; }
   .detail-mood { font-size: 0.78rem; padding: 2px 12px; }
   .detail-desc { font-size: 0.9rem; line-height: 1.8; }
+  .detail-moodtext { font-size: 1.05rem; line-height: 1.9; }
   .detail-section { padding: 16px; margin-bottom: 12px; }
 
   .section-title { font-size: 1.5rem; margin: 16px 0 16px; }
@@ -2428,7 +2727,7 @@ body {
   padding: 11px 28px;
   border-radius: 24px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
   letter-spacing: 1px;
 }
 
@@ -2563,7 +2862,7 @@ body {
   font-size: 0.85rem;
   border-radius: 20px;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
 }
 .reset-btn:hover {
   border-color: var(--accent-red);
@@ -2771,7 +3070,7 @@ body {
   overflow: hidden;
   position: relative;
   border: 1px solid rgba(196, 163, 90, 0.18);
-  animation: dcCardIn 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+  animation: dcCardIn 0.4s var(--ease-out);
 }
 @keyframes dcCardIn {
   from { opacity: 0; transform: scale(0.92) translateY(16px); }
@@ -2986,7 +3285,7 @@ body {
   display: flex;
   gap: 12px;
   margin-top: 20px;
-  animation: dcCardIn 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+  animation: dcCardIn 0.5s var(--ease-out);
 }
 .dc-save-btn {
   flex: 1;
@@ -3001,7 +3300,7 @@ body {
   letter-spacing: 2px;
   min-height: 46px;
   touch-action: manipulation;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
   -webkit-user-select: none;
   user-select: none;
 }
@@ -3021,7 +3320,7 @@ body {
   letter-spacing: 1px;
   min-height: 46px;
   touch-action: manipulation;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
   -webkit-user-select: none;
   user-select: none;
 }
@@ -3045,7 +3344,7 @@ body {
   color: #C4A35A;
   cursor: pointer;
   margin-top: 16px;
-  transition: all 0.3s;
+  transition: all var(--dur-normal);
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
