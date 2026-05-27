@@ -583,6 +583,103 @@ body {
   }
 }
 
+/* ==================== 卷轴开场页 ==================== */
+#scroll-intro {
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: #1C1814;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 卷轴循环视频（双通道无缝循环） */
+.scroll-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.scroll-video-a {
+  z-index: 2;
+  opacity: 1;
+}
+.scroll-video-b {
+  z-index: 1;
+  opacity: 0;
+}
+/* 交叉淡入淡出状态 */
+.scroll-video-a.crossfade { opacity: 0; }
+.scroll-video-b.crossfade { opacity: 1; }
+
+/* 点击提示 */
+.scroll-tap-hint {
+  position: absolute;
+  bottom: 10vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  animation: tapHintPulse 2.2s ease-in-out infinite;
+}
+.scroll-tap-text {
+  font-family: var(--font-body);
+  font-size: 15px;
+  letter-spacing: 0.25em;
+  color: rgba(212,175,105,0.9);
+  text-shadow: 0 0 12px rgba(0,0,0,0.5), 0 0 4px rgba(0,0,0,0.3);
+}
+.scroll-tap-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  opacity: 0.5;
+  animation: tapDotBounce 1.6s ease-in-out infinite;
+}
+@keyframes tapHintPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+@keyframes tapDotBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.3; }
+  50% { transform: translateY(-4px); opacity: 0.7; }
+}
+
+/* 淡出（点击后） */
+#scroll-intro.fade-out {
+  pointer-events: none;
+}
+#scroll-intro.fade-out .scroll-video {
+  opacity: 0;
+  transition: opacity 0.8s ease;
+}
+#scroll-intro.fade-out .scroll-tap-hint {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+/* 手机端适配 */
+@media (max-width: 640px) {
+  .scroll-tap-hint {
+    bottom: 8vh;
+  }
+  .scroll-tap-text {
+    font-size: 13px;
+  }
+}
+
 /* ---- 标题组 ---- */
 .title-group {
   margin-bottom: 20px;

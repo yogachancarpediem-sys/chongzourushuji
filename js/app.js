@@ -1,5 +1,6 @@
 /**
- * 《入蜀记》互动体验 - 原型逻辑
+ * 《入蜀记》互动体验 - v62
+ * 改动：卷轴开场视频双通道无缝循环（crossfade 消除 loop 卡顿）
  */
 
 // ==================== 状态管理 ====================
@@ -95,7 +96,7 @@ function startJourney() {
   updateProgress();
   showBubble('欢迎踏上诗旅！沿着长江，我们去追寻陆游的诗心吧～');
   const bgm = document.getElementById('bgm');
-  if (bgm && !bgmPlaying) {
+  if (bgm && !bgmPlaying && !_bgmStarted) {
     bgm.volume = 0;
     bgm.play().then(() => {
       bgmPlaying = true;
@@ -872,36 +873,151 @@ function setCharacterPose(elementId, character, pose) {
   }
 }
 
+// ==================== 卷轴开场 ====================
+var _scrollLoopActive = true;  // 双通道无缝循环开关
+
+/** 双视频交叉淡入淡出，消除 HTML5 loop 的卡顿 */
+function initScrollVideoLoop() {
+  var vidA = document.getElementById('scroll-video-a');
+  var vidB = document.getElementById('scroll-video-b');
+  if (!vidA || !vidB) return;
+  if (!vidA.duration) {
+    // duration 尚未就绪，等待 loadedmetadata
+    vidA.addEventListener('loadedmetadata', initScrollVideoLoop, { once: true });
+    return;
+  }
+
+  var duration = vidA.duration;
+  var active = 'a';           // 当前播放的是 A 还是 B
+  var swapping = false;       // 防止重复触发
+  var SWAP_AHEAD = 0.45;      // 提前 0.45s 启动备用视频
+  var SYNC_PLAY_DELAY = 30;   // 备用视频 play() 后多等 30ms 再 crossfade（给解码留时间）
+
+  function swap() {
+    if (swapping || !_scrollLoopActive) return;
+    swapping = true;
+
+    var fromVid, toVid;
+    if (active === 'a') {
+      fromVid = vidA; toVid = vidB;
+    } else {
+      fromVid = vidB; toVid = vidA;
+    }
+
+    toVid.currentTime = 0;
+    toVid.play().then(function() {
+      // 等一小段时间让新视频的解码缓冲就绪，再开始 crossfade
+      setTimeout(function() {
+        if (!_scrollLoopActive) return;
+        if (active === 'a') {
+          vidA.classList.add('crossfade');
+          vidB.classList.add('crossfade');
+        } else {
+          vidA.classList.remove('crossfade');
+          vidB.classList.remove('crossfade');
+        }
+        active = (active === 'a') ? 'b' : 'a';
+        swapping = false;
+      }, SYNC_PLAY_DELAY);
+    }).catch(function() {
+      swapping = false;
+    });
+  }
+
+  function onTimeUpdate() {
+    var vid = (active === 'a') ? vidA : vidB;
+    if (vid.currentTime >= duration - SWAP_AHEAD) {
+      swap();
+    }
+  }
+
+  vidA.addEventListener('timeupdate', onTimeUpdate);
+  vidB.addEventListener('timeupdate', onTimeUpdate);
+
+  // 清理：移除 loop 属性（用 JS 控制循环）
+  vidA.removeAttribute('loop');
+  vidB.removeAttribute('loop');
+
+  // 兜底：万一 swap 没触发，在 ended 时手动 restart
+  vidA.addEventListener('ended', function() { if (_scrollLoopActive) { vidA.currentTime = 0; vidA.play(); } });
+  vidB.addEventListener('ended', function() { if (_scrollLoopActive) { vidB.currentTime = 0; vidB.play(); } });
+}
+
+function initScrollIntro() {
+  var scrollIntro = document.getElementById('scroll-intro');
+  var opening = document.getElementById('opening');
+  var video = document.getElementById('opening-video');
+  var bgm = document.getElementById('bgm');
+
+  if (!scrollIntro || !opening) return;
+
+  // 启动双通道无缝循环
+  initScrollVideoLoop();
+
+  var started = false;
+
+  function onTap(e) {
+    if (started) return;
+    started = true;
+    if (e && e.type === 'touchstart') e.preventDefault();
+
+    // 停止无缝循环
+    _scrollLoopActive = false;
+
+    // 启动 BGM（用户手势 → 浏览器放行）
+    _tryStartBGM();
+
+    // 卷轴淡出
+    scrollIntro.classList.add('fade-out');
+
+    // 切换到开场视频
+    setTimeout(function() {
+      scrollIntro.classList.remove('active');
+      scrollIntro.style.display = 'none';
+      opening.classList.add('active');
+      if (video) {
+        video.play().catch(function() {
+          console.log('Video autoplay blocked');
+        });
+      }
+    }, 700);
+  }
+
+  scrollIntro.addEventListener('click', onTap);
+  scrollIntro.addEventListener('touchstart', onTap, { passive: false });
+}
+
 // ==================== 背景音乐 ====================
 let bgmPlaying = false;
-let bgmFading = false;       // 渐入进行中
-let bgmTargetVol = 0.3;      // 目标音量
-let bgmRafId = null;         // fade RAF id
-let _bgmStarted = false;     // 防 touch+click 双击
+let bgmFading = false;
+let bgmTargetVol = 0.3;
+let bgmRafId = null;
+let _bgmStarted = false;
+
+/** 幂等启动 BGM（卷轴点击 / 文档点击均可调用） */
+function _tryStartBGM() {
+  if (_bgmStarted) return;
+  _bgmStarted = true;
+  var bgm = document.getElementById('bgm');
+  var hint = document.getElementById('opening-tap-hint');
+  if (!bgm) return;
+  bgm.volume = 0;
+  bgm.play().then(function() {
+    bgmPlaying = true;
+    updateBGMBtn();
+    fadeInBGM(bgm);
+  }).catch(function() {});
+  if (hint) hint.classList.add('hidden');
+}
 
 function initBGM() {
   var bgm = document.getElementById('bgm');
   if (!bgm) return;
   bgm.volume = 0;
 
-  // 首次用户交互时启动 BGM 渐入（可在开场视频播放期间触发）
-  var hint = document.getElementById('opening-tap-hint');
-  function startBGM() {
-    if (_bgmStarted) return;
-    _bgmStarted = true;
-    bgm.play().then(function() {
-      bgmPlaying = true;
-      updateBGMBtn();
-      fadeInBGM(bgm);
-    }).catch(function() {});
-    if (hint) hint.classList.add('hidden');
-    document.removeEventListener('click', onClick);
-    document.removeEventListener('touchstart', onTouch);
-  }
-  function onClick(e) { startBGM(); }
-  function onTouch(e) { startBGM(); }
-  document.addEventListener('click', onClick, { once: true });
-  document.addEventListener('touchstart', onTouch, { once: true });
+  // 兜底：如果在非卷轴路径下（如直接刷新），文档首次交互也能启动 BGM
+  document.addEventListener('click', _tryStartBGM, { once: true });
+  document.addEventListener('touchstart', _tryStartBGM, { once: true });
 }
 
 /** BGM 从 0 渐入到目标音量 */
@@ -1389,6 +1505,7 @@ function saveDailyCard() {
 
 // ==================== 初始化 ====================
 loadState();
+initScrollIntro();
 initBGM();
 
 // ==================== 水墨流线交互 ====================
