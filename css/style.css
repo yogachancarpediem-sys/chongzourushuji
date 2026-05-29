@@ -637,6 +637,7 @@ body {
   font-family: var(--font-body);
   font-size: 15px;
   letter-spacing: 0.25em;
+  white-space: nowrap;
   color: rgba(212,175,105,0.9);
   text-shadow: 0 0 12px rgba(0,0,0,0.5), 0 0 4px rgba(0,0,0,0.3);
 }

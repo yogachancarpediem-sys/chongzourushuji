@@ -1047,6 +1047,8 @@ function _tryStartBGM() {
   var hint = document.getElementById('opening-tap-hint');
   if (!bgm) return;
   bgm.volume = 0;
+  // 确保音频开始加载（preload="none" 时需要手动触发）
+  bgm.load();
   bgm.play().then(function() {
     bgmPlaying = true;
     updateBGMBtn();
