@@ -1,6 +1,6 @@
 /**
- * 《入蜀记》互动体验 - v67
- * 改动：卷轴→开场视频过渡优化（rAF 等待视频就绪 + preload=auto）
+ * 《入蜀记》互动体验 - v68
+ * 改动：卷轴视频 autoplay 被拦截时，全局首次交互补播 + 双通道均 preload=auto
  */
 
 // ==================== 状态管理 ====================
@@ -885,18 +885,39 @@ function initScrollVideoLoop() {
   // 微信 X5 浏览器 autoplay 往往被拦截，检测并降级
   var isWeChat = /MicroMessenger/i.test(navigator.userAgent);
   var autoplayFailed = false;
+  var _scrollRescued = false;
+
+  function rescueScrollVideo() {
+    if (_scrollRescued) return;
+    _scrollRescued = true;
+    // 用户已交互 → play() 会成功
+    if (vidA.paused) {
+      vidA.play().then(function() {
+        // 播放成功，隐藏 waiting 提示
+        var hint = document.getElementById('scroll-tap-hint');
+        if (hint) {
+          hint.classList.remove('waiting');
+          var textEl = hint.querySelector('.scroll-tap-text');
+          if (textEl) textEl.textContent = '轻触屏幕 · 展开旅程';
+        }
+      }).catch(function() {});
+    }
+  }
 
   // 监听 autoplay 是否真正开始
   var autoplayCheckTimer = setTimeout(function() {
     if (vidA.paused && vidA.readyState < 2) {
       autoplayFailed = true;
-      // 显示"请点击开始"的提示
+      // 显示等待提示
       var hint = document.getElementById('scroll-tap-hint');
       if (hint) {
         hint.classList.add('waiting');
         var textEl = hint.querySelector('.scroll-tap-text');
         if (textEl) textEl.textContent = '轻触此处 · 展开卷轴';
       }
+      // 全局首次交互时补播卷轴视频
+      document.addEventListener('touchstart', rescueScrollVideo, { once: true, passive: true });
+      document.addEventListener('click', rescueScrollVideo, { once: true });
     }
   }, isWeChat ? 1500 : 800);
 
