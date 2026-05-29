@@ -1040,7 +1040,7 @@ function initScrollIntro() {
     }
 
     // 如果 autoplay 被拦截过，延迟淡出让用户看到卷轴视频动起来
-    var RESCUE_DELAY = _autoplayFailed ? 800 : 0;
+    var RESCUE_DELAY = _autoplayFailed ? 1500 : 0;
     var FADE_MS = 700;
     var TOTAL_MS = RESCUE_DELAY + FADE_MS;
 
