@@ -1,6 +1,6 @@
 /**
- * 《入蜀记》互动体验 - v62
- * 改动：卷轴开场视频双通道无缝循环（crossfade 消除 loop 卡顿）
+ * 《入蜀记》互动体验 - v67
+ * 改动：卷轴→开场视频过渡优化（rAF 等待视频就绪 + preload=auto）
  */
 
 // ==================== 状态管理 ====================
@@ -980,13 +980,12 @@ function initScrollIntro() {
   initScrollVideoLoop();
 
   var started = false;
-
-  // 检测微信环境
   var isWeChat = /MicroMessenger/i.test(navigator.userAgent);
 
   function onTap(e) {
     if (started) return;
     started = true;
+    var tapTs = Date.now();
     if (e && e.type === 'touchstart') e.preventDefault();
 
     // 停止无缝循环
@@ -995,37 +994,52 @@ function initScrollIntro() {
     // 启动 BGM（用户手势 → 浏览器放行）
     _tryStartBGM();
 
-    // ===== 微信兼容：在同一个手势上下文里预启动视频 =====
-    // 微信 X5 浏览器要求 video.play() 必须在用户手势回调中调用
-    // setTimeout 内的 play() 会因脱离手势上下文而被拦截
+    // ===== 手势内预启动开场视频 =====
+    // 微信 X5：play() 必须在手势回调中，setTimeout 内会失效
+    // 普通浏览器：play→pause→reset 让解码器预热、缓冲首帧
     if (video) {
       video.play().then(function() {
-        // 手势内播放成功 → 暂停，等转场后再恢复
         video.pause();
-      }).catch(function() {
-        // 仍然失败（极其罕见），留着转场后再试
-      });
+        video.currentTime = 0;
+      }).catch(function() {});
     }
 
-    // 卷轴淡出
+    // 卷轴淡出（CSS transition 700ms）
     scrollIntro.classList.add('fade-out');
 
-    // 切换到开场视频
-    setTimeout(function() {
+    // 切换到开场页
+    function showOpening() {
       scrollIntro.classList.remove('active');
       scrollIntro.style.display = 'none';
       opening.classList.add('active');
       if (video) {
-        // 再次 play() —— 如果上面手势内 play 已成功，这次能恢复
         video.play().catch(function() {
-          // 兜底：微信环境显示手动播放提示
           if (isWeChat) {
             var hint = document.getElementById('opening-tap-hint');
             if (hint) hint.style.display = 'flex';
           }
         });
       }
-    }, 700);
+    }
+
+    var FADE_MS = 700;
+    var MAX_WAIT = 5000;
+
+    // rAF 轮询：同时等待淡出动画 + 视频首帧就绪
+    (function poll() {
+      var elapsed = Date.now() - tapTs;
+      var fadeDone = elapsed >= FADE_MS;
+      var videoOk = !video || video.readyState >= 2; // HAVE_CURRENT_DATA
+
+      if (fadeDone && videoOk) {
+        showOpening();
+      } else if (elapsed >= MAX_WAIT) {
+        // 超时强制切换（极慢网络兜底）
+        showOpening();
+      } else {
+        requestAnimationFrame(poll);
+      }
+    })();
   }
 
   scrollIntro.addEventListener('click', onTap);
