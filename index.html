@@ -29,7 +29,7 @@
 <body>
   <link rel="preload" href="https://cdn.bootcdn.net/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" as="script">
   <!-- 背景音乐 -->
-  <audio id="bgm" loop preload="auto">
+  <audio id="bgm" loop preload="none">
     <source src="assets/bgm.ogg" type="audio/ogg">
     <source src="assets/bgm.mp3" type="audio/mpeg">
   </audio>
@@ -50,7 +50,7 @@
     <video class="scroll-video scroll-video-a" id="scroll-video-a" autoplay muted playsinline preload="auto">
       <source src="assets/opening-book.mp4" type="video/mp4">
     </video>
-    <video class="scroll-video scroll-video-b" id="scroll-video-b" muted playsinline preload="auto">
+    <video class="scroll-video scroll-video-b" id="scroll-video-b" muted playsinline preload="none">
       <source src="assets/opening-book.mp4" type="video/mp4">
     </video>
 
@@ -64,7 +64,7 @@
   <!-- ==================== 开场页 ==================== -->
   <section id="opening" class="screen">
     <!-- 开场视频背景 -->
-    <video class="opening-video" id="opening-video" muted playsinline preload="auto"
+    <video class="opening-video" id="opening-video" muted playsinline preload="metadata"
            poster="assets/scenery/suzhou.webp">
       <source src="assets/opening.mp4" type="video/mp4">
     </video>
@@ -292,7 +292,7 @@
 <script src="js/tts.js?v=4"></script>
 <script src="js/ambient.js?v=6"></script>
 <script src="js/idle-events.js?v=2"></script>
-<script src="js/app.js?v=62"></script>
+<script src="js/app.js?v=63"></script>
   <!-- 分享卡片生成 -->
   <script src="https://cdn.bootcdn.net/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <script>
