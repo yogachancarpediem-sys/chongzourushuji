@@ -1,6 +1,6 @@
 /**
- * 《入蜀记》互动体验 - v68
- * 改动：卷轴视频 autoplay 被拦截时，全局首次交互补播 + 双通道均 preload=auto
+ * 《入蜀记》互动体验 - v69
+ * 改动：autoplay 失败时点击后先播卷轴视频 800ms 再过渡，避免直接跳转
  */
 
 // ==================== 状态管理 ====================
@@ -875,6 +875,7 @@ function setCharacterPose(elementId, character, pose) {
 
 // ==================== 卷轴开场 ====================
 var _scrollLoopActive = true;  // 双通道无缝循环开关
+var _autoplayFailed = false;  // autoplay 是否被浏览器拦截
 
 /** 双视频交叉淡入淡出，消除 HTML5 loop 的卡顿 */
 function initScrollVideoLoop() {
@@ -907,7 +908,7 @@ function initScrollVideoLoop() {
   // 监听 autoplay 是否真正开始
   var autoplayCheckTimer = setTimeout(function() {
     if (vidA.paused && vidA.readyState < 2) {
-      autoplayFailed = true;
+      _autoplayFailed = true;
       // 显示等待提示
       var hint = document.getElementById('scroll-tap-hint');
       if (hint) {
@@ -1015,6 +1016,19 @@ function initScrollIntro() {
     // 启动 BGM（用户手势 → 浏览器放行）
     _tryStartBGM();
 
+    // 如果 autoplay 之前被拦截 → 先让卷轴视频动起来
+    // （rescueScrollVideo 也会尝试播放，但这里先到先得）
+    if (_autoplayFailed && vidA) {
+      vidA.play().then(function() {
+        var hint = document.getElementById('scroll-tap-hint');
+        if (hint) {
+          hint.classList.remove('waiting');
+          var textEl = hint.querySelector('.scroll-tap-text');
+          if (textEl) textEl.textContent = '轻触屏幕 · 展开旅程';
+        }
+      }).catch(function() {});
+    }
+
     // ===== 手势内预启动开场视频 =====
     // 微信 X5：play() 必须在手势回调中，setTimeout 内会失效
     // 普通浏览器：play→pause→reset 让解码器预热、缓冲首帧
@@ -1025,8 +1039,14 @@ function initScrollIntro() {
       }).catch(function() {});
     }
 
-    // 卷轴淡出（CSS transition 700ms）
-    scrollIntro.classList.add('fade-out');
+    // 如果 autoplay 被拦截过，延迟淡出让用户看到卷轴视频动起来
+    var RESCUE_DELAY = _autoplayFailed ? 800 : 0;
+    var FADE_MS = 700;
+    var TOTAL_MS = RESCUE_DELAY + FADE_MS;
+
+    setTimeout(function() {
+      scrollIntro.classList.add('fade-out');
+    }, RESCUE_DELAY);
 
     // 切换到开场页
     function showOpening() {
@@ -1043,13 +1063,12 @@ function initScrollIntro() {
       }
     }
 
-    var FADE_MS = 700;
-    var MAX_WAIT = 5000;
+    var MAX_WAIT = _autoplayFailed ? 6000 : 5000;
 
     // rAF 轮询：同时等待淡出动画 + 视频首帧就绪
     (function poll() {
       var elapsed = Date.now() - tapTs;
-      var fadeDone = elapsed >= FADE_MS;
+      var fadeDone = elapsed >= TOTAL_MS;
       var videoOk = !video || video.readyState >= 2; // HAVE_CURRENT_DATA
 
       if (fadeDone && videoOk) {
