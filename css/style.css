@@ -653,6 +653,7 @@ body {
 .scroll-tap-hint.waiting {
   animation: tapHintUrgent 0.8s ease-in-out infinite;
   bottom: 14vh;
+  width: max-content;
 }
 .scroll-tap-hint.waiting .scroll-tap-text {
   font-size: 17px;
