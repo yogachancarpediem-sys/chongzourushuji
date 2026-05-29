@@ -22,7 +22,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='8' fill='%23C4A35A'/><text x='50' y='68' font-size='60' text-anchor='middle' font-family='serif' fill='%23F5F0E6'>蜀</text></svg>">
   <title>重走《入蜀记》：陆小六的奇幻诗旅</title>
   <link rel="preload" as="video" href="assets/opening.mp4">
-  <link rel="stylesheet" href="css/style.css?v=54">
+  <link rel="stylesheet" href="css/style.css?v=55">
   <link rel="preconnect" href="https://fonts.loli.net">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&family=Ma+Shan+Zheng&display=swap" rel="stylesheet" onerror="this.remove()">
@@ -48,11 +48,13 @@
   <!-- ==================== 卷轴开场 ==================== -->
   <section id="scroll-intro" class="screen active">
     <!-- 卷轴循环视频（双通道无缝循环） -->
-    <video class="scroll-video scroll-video-a" id="scroll-video-a" autoplay muted playsinline preload="auto"
-           poster="assets/scroll-poster.webp">
+    <video class="scroll-video scroll-video-a" id="scroll-video-a" autoplay muted playsinline webkit-playsinline
+           x5-video-player-type="h5" x5-video-player-fullscreen="true" x5-video-orientation="portrait"
+           preload="auto" poster="assets/scroll-poster.webp">
       <source src="assets/opening-book.mp4" type="video/mp4">
     </video>
-    <video class="scroll-video scroll-video-b" id="scroll-video-b" muted playsinline preload="none">
+    <video class="scroll-video scroll-video-b" id="scroll-video-b" muted playsinline webkit-playsinline
+           x5-video-player-type="h5" x5-video-player-fullscreen="true" x5-video-orientation="portrait" preload="none">
       <source src="assets/opening-book.mp4" type="video/mp4">
     </video>
 
@@ -66,8 +68,9 @@
   <!-- ==================== 开场页 ==================== -->
   <section id="opening" class="screen">
     <!-- 开场视频背景 -->
-    <video class="opening-video" id="opening-video" muted playsinline preload="metadata"
-           poster="assets/scenery/suzhou.webp">
+    <video class="opening-video" id="opening-video" muted playsinline webkit-playsinline
+           x5-video-player-type="h5" x5-video-player-fullscreen="true" x5-video-orientation="portrait"
+           preload="metadata" poster="assets/scenery/suzhou.webp">
       <source src="assets/opening.mp4" type="video/mp4">
     </video>
 
@@ -294,7 +297,7 @@
 <script src="js/tts.js?v=4"></script>
 <script src="js/ambient.js?v=6"></script>
 <script src="js/idle-events.js?v=2"></script>
-<script src="js/app.js?v=64"></script>
+<script src="js/app.js?v=65"></script>
   <!-- 分享卡片生成 -->
   <script src="https://cdn.bootcdn.net/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 <script>

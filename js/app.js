@@ -881,6 +881,30 @@ function initScrollVideoLoop() {
   var vidA = document.getElementById('scroll-video-a');
   var vidB = document.getElementById('scroll-video-b');
   if (!vidA || !vidB) return;
+
+  // 微信 X5 浏览器 autoplay 往往被拦截，检测并降级
+  var isWeChat = /MicroMessenger/i.test(navigator.userAgent);
+  var autoplayFailed = false;
+
+  // 监听 autoplay 是否真正开始
+  var autoplayCheckTimer = setTimeout(function() {
+    if (vidA.paused && vidA.readyState < 2) {
+      autoplayFailed = true;
+      // 显示"请点击开始"的提示
+      var hint = document.getElementById('scroll-tap-hint');
+      if (hint) {
+        hint.classList.add('waiting');
+        var textEl = hint.querySelector('.scroll-tap-text');
+        if (textEl) textEl.textContent = '轻触此处 · 展开卷轴';
+      }
+    }
+  }, isWeChat ? 1500 : 800);
+
+  // 如果 autoplay 成功开始，清除超时
+  vidA.addEventListener('play', function() {
+    clearTimeout(autoplayCheckTimer);
+  }, { once: true });
+
   if (!vidA.duration) {
     // duration 尚未就绪，等待 loadedmetadata
     vidA.addEventListener('loadedmetadata', initScrollVideoLoop, { once: true });
@@ -947,6 +971,7 @@ function initScrollIntro() {
   var scrollIntro = document.getElementById('scroll-intro');
   var opening = document.getElementById('opening');
   var video = document.getElementById('opening-video');
+  var vidA = document.getElementById('scroll-video-a');
   var bgm = document.getElementById('bgm');
 
   if (!scrollIntro || !opening) return;
@@ -955,6 +980,9 @@ function initScrollIntro() {
   initScrollVideoLoop();
 
   var started = false;
+
+  // 检测微信环境
+  var isWeChat = /MicroMessenger/i.test(navigator.userAgent);
 
   function onTap(e) {
     if (started) return;
@@ -967,6 +995,18 @@ function initScrollIntro() {
     // 启动 BGM（用户手势 → 浏览器放行）
     _tryStartBGM();
 
+    // ===== 微信兼容：在同一个手势上下文里预启动视频 =====
+    // 微信 X5 浏览器要求 video.play() 必须在用户手势回调中调用
+    // setTimeout 内的 play() 会因脱离手势上下文而被拦截
+    if (video) {
+      video.play().then(function() {
+        // 手势内播放成功 → 暂停，等转场后再恢复
+        video.pause();
+      }).catch(function() {
+        // 仍然失败（极其罕见），留着转场后再试
+      });
+    }
+
     // 卷轴淡出
     scrollIntro.classList.add('fade-out');
 
@@ -976,8 +1016,13 @@ function initScrollIntro() {
       scrollIntro.style.display = 'none';
       opening.classList.add('active');
       if (video) {
+        // 再次 play() —— 如果上面手势内 play 已成功，这次能恢复
         video.play().catch(function() {
-          console.log('Video autoplay blocked');
+          // 兜底：微信环境显示手动播放提示
+          if (isWeChat) {
+            var hint = document.getElementById('opening-tap-hint');
+            if (hint) hint.style.display = 'flex';
+          }
         });
       }
     }, 700);
