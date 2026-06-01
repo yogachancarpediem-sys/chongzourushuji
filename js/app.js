@@ -1,6 +1,6 @@
 /**
- * 《入蜀记》互动体验 - v69
- * 改动：autoplay 失败时点击后先播卷轴视频 800ms 再过渡，避免直接跳转
+ * 《入蜀记》互动体验 - v71
+ * 改动：视频缓冲 loading 指示器 + 开场视频点按跳过 + 结束后自动 3s 倒计时进入主页
  */
 
 // ==================== 状态管理 ====================
@@ -36,10 +36,12 @@ function saveState() {
 (function setupVideoTransition() {
   var video = document.getElementById('opening-video');
   var opening = document.getElementById('opening');
+  var startBtn = document.getElementById('start-btn');
   if (!video || !opening) return;
 
   var transitioning = false;
   var MAX_WAIT = 10;
+  var _autoStartTimer = null;
 
   function showContent() {
     if (transitioning) return;
@@ -49,7 +51,70 @@ function saveState() {
     if (typeof initOpeningShader === 'function') {
       initOpeningShader();
     }
+    // 启用开始按钮
+    if (startBtn) {
+      startBtn.style.pointerEvents = 'auto';
+    }
+    // 隐藏"轻触启程"提示（不再需要二次点击）
+    var hint = document.getElementById('opening-tap-hint');
+    if (hint) hint.classList.add('hidden');
+    // 自动倒计时 3 秒后进入主页
+    startAutoCountdown();
   }
+
+  /* 自动倒计时 → startJourney */
+  function startAutoCountdown() {
+    var countdown = 3;
+    if (startBtn) {
+      startBtn.classList.add('counting');
+      startBtn.querySelector('.btn-text').textContent = '踏上诗旅 · ' + countdown + 's';
+    }
+    _autoStartTimer = setInterval(function() {
+      countdown--;
+      if (countdown <= 0) {
+        clearInterval(_autoStartTimer);
+        _autoStartTimer = null;
+        if (startBtn) {
+          startBtn.classList.remove('counting');
+          startBtn.querySelector('.btn-text').textContent = '踏上诗旅';
+        }
+        startJourney();
+      } else if (startBtn) {
+        startBtn.querySelector('.btn-text').textContent = '踏上诗旅 · ' + countdown + 's';
+      }
+    }, 1000);
+  }
+
+  /* 点击开始按钮 → 立即进入，取消倒计时 */
+  if (startBtn) {
+    var origOnclick = startBtn.getAttribute('onclick');
+    startBtn.setAttribute('onclick', '');
+    startBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (_autoStartTimer) {
+        clearInterval(_autoStartTimer);
+        _autoStartTimer = null;
+      }
+      startJourney();
+    });
+  }
+
+  /* 点按开场视频区域 → 跳过播放，直接展内容 */
+  opening.addEventListener('click', function skipVideo(e) {
+    if (transitioning) return;
+    // 只有视频在播放时才响应跳过
+    if (video.paused) return;
+    if (e.target === startBtn) return; // start-btn 自己处理
+    if (startBtn && startBtn.contains(e.target)) return;
+    showContent();
+  });
+  opening.addEventListener('touchstart', function skipVideoTouch(e) {
+    if (transitioning) return;
+    if (video.paused) return;
+    if (e.target === startBtn) return;
+    if (startBtn && startBtn.contains(e.target)) return;
+    showContent();
+  }, { passive: true });
 
   video.addEventListener('ended', function() {
     showContent();
@@ -1121,6 +1186,33 @@ function initBGM() {
   document.addEventListener('touchstart', _tryStartBGM, { once: true });
 }
 
+/** 视频缓冲 loading 指示器 */
+function initVideoLoaders() {
+  var loaderMap = {
+    'scroll-video-a': 'scroll-loader',
+    'scroll-video-b': 'scroll-loader',
+    'opening-video': 'opening-loader'
+  };
+  Object.keys(loaderMap).forEach(function(vid) {
+    var el = document.getElementById(vid);
+    var lid = loaderMap[vid];
+    var loader = document.getElementById(lid);
+    if (!el || !loader) return;
+    el.addEventListener('waiting', function() {
+      loader.classList.add('active');
+    });
+    el.addEventListener('playing', function() {
+      loader.classList.remove('active');
+    });
+    el.addEventListener('canplay', function() {
+      loader.classList.remove('active');
+    });
+    el.addEventListener('error', function() {
+      loader.classList.remove('active');
+    });
+  });
+}
+
 /** BGM 从 0 渐入到目标音量 */
 function fadeInBGM(bgm) {
   if (bgmFading) return;
@@ -1608,6 +1700,7 @@ function saveDailyCard() {
 loadState();
 initScrollIntro();
 initBGM();
+initVideoLoaders();
 
 // ==================== 水墨流线交互 ====================
 (function() {

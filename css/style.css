@@ -345,6 +345,35 @@ body {
   opacity: 0;
 }
 
+/* ===== 视频缓冲加载指示器 ===== */
+.video-loader {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  pointer-events: none;
+  background: rgba(245,240,230,0.15);
+  backdrop-filter: blur(2px);
+  transition: opacity 0.4s var(--ease-soft);
+  opacity: 0;
+}
+.video-loader.active {
+  display: flex;
+  opacity: 1;
+}
+.video-loader-ring {
+  width: 36px; height: 36px;
+  border: 2px solid rgba(196,163,90,0.15);
+  border-top-color: var(--accent-gold);
+  border-radius: 50%;
+  animation: vloader-spin 0.8s linear infinite;
+}
+@keyframes vloader-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* 视频遮罩 — 视频播放期间透明，内容出现后渐变 */
 .opening-overlay {
   position: absolute;
@@ -962,6 +991,15 @@ body {
 .start-btn:active {
   transform: translateY(0);
   box-shadow: 0 2px 10px rgba(44,44,44,0.15);
+}
+
+/* 自动倒计时状态 —— 按钮脉冲 + 倒计时文字 */
+.start-btn.counting {
+  animation: btnPulse 1.5s ease-in-out infinite;
+}
+@keyframes btnPulse {
+  0%, 100% { box-shadow: 0 4px 20px rgba(44,44,44,0.15); }
+  50% { box-shadow: 0 4px 32px rgba(196,163,90,0.35); }
 }
 
 .btn-ink {
