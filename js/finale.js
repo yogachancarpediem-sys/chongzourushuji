@@ -1,6 +1,6 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * 从 app.js 拆分
+ * v2: 修复小船动画（loopFrame 提升作用域 + _restartGoldBoat）
  */
 
 /* ========== 角色素材 ========== */
@@ -297,42 +297,64 @@ var _goldBoatRafId = null;
   var CYCLE = FLOW + PAUSE + FADEOUT + GAP + FADEIN;
   var startTs = null;
 
+  function loopFrame(ts) {
+    if (!startTs) startTs = ts;
+    var t = (ts - startTs) % CYCLE;
+    var progress, opacity;
+    if (t < FLOW) { progress = t / FLOW; opacity = Math.min(1, t / FADEIN); }
+    else if (t < FLOW + PAUSE) { progress = 1; opacity = 1; }
+    else if (t < FLOW + PAUSE + FADEOUT) { progress = 1; opacity = 1 - (t - FLOW - PAUSE) / FADEOUT; }
+    else if (t < FLOW + PAUSE + FADEOUT + GAP) { progress = 0; opacity = 0; }
+    else { progress = 0; opacity = (t - FLOW - PAUSE - FADEOUT - GAP) / FADEIN; }
+    var dist = progress * totalLen;
+    var pt = path.getPointAtLength(dist);
+    var aheadDist = Math.min(dist + 3, totalLen);
+    var ptAhead = path.getPointAtLength(aheadDist);
+    var angle = Math.atan2(ptAhead.y - pt.y, ptAhead.x - pt.x) * 180 / Math.PI;
+    goldBoat.setAttribute('transform', 'translate(' + pt.x.toFixed(1) + ',' + pt.y.toFixed(1) + ') rotate(' + angle.toFixed(1) + ')');
+    goldBoat.style.opacity = opacity;
+    var wakeEnd = path.getPointAtLength(Math.max(0, dist - 40));
+    var ptBehind = path.getPointAtLength(Math.max(dist - 3, 0));
+    goldWake.setAttribute('x1', wakeEnd.x); goldWake.setAttribute('y1', wakeEnd.y);
+    goldWake.setAttribute('x2', ptBehind.x); goldWake.setAttribute('y2', ptBehind.y);
+    goldWake.style.opacity = opacity * 0.25;
+    goldHalo.setAttribute('cx', pt.x); goldHalo.setAttribute('cy', pt.y);
+    goldHalo.style.opacity = opacity * 0.08;
+    stations.forEach(function(s) {
+      var shouldLight = (dist >= s.dist - 8) && (t < FLOW + PAUSE);
+      if (shouldLight && !s.lit) { s.lit = true; if (s.dot) s.dot.classList.add('lit'); if (s.text) s.text.classList.add('lit'); }
+      else if (!shouldLight && s.lit) { s.lit = false; if (s.dot) s.dot.classList.remove('lit'); if (s.text) s.text.classList.remove('lit'); }
+    });
+    _goldBoatRafId = requestAnimationFrame(loopFrame);
+  }
+
   function startLoop() {
     startTs = null;
-    function frame(ts) {
-      if (!startTs) startTs = ts;
-      var t = (ts - startTs) % CYCLE;
-      var progress, opacity;
-      if (t < FLOW) { progress = t / FLOW; opacity = Math.min(1, t / FADEIN); }
-      else if (t < FLOW + PAUSE) { progress = 1; opacity = 1; }
-      else if (t < FLOW + PAUSE + FADEOUT) { progress = 1; opacity = 1 - (t - FLOW - PAUSE) / FADEOUT; }
-      else if (t < FLOW + PAUSE + FADEOUT + GAP) { progress = 0; opacity = 0; }
-      else { progress = 0; opacity = (t - FLOW - PAUSE - FADEOUT - GAP) / FADEIN; }
-      var dist = progress * totalLen;
-      var pt = path.getPointAtLength(dist);
-      var aheadDist = Math.min(dist + 3, totalLen);
-      var ptAhead = path.getPointAtLength(aheadDist);
-      var angle = Math.atan2(ptAhead.y - pt.y, ptAhead.x - pt.x) * 180 / Math.PI;
-      goldBoat.setAttribute('transform', 'translate(' + pt.x.toFixed(1) + ',' + pt.y.toFixed(1) + ') rotate(' + angle.toFixed(1) + ')');
-      goldBoat.style.opacity = opacity;
-      var wakeEnd = path.getPointAtLength(Math.max(0, dist - 40));
-      var ptBehind = path.getPointAtLength(Math.max(dist - 3, 0));
-      goldWake.setAttribute('x1', wakeEnd.x); goldWake.setAttribute('y1', wakeEnd.y);
-      goldWake.setAttribute('x2', ptBehind.x); goldWake.setAttribute('y2', ptBehind.y);
-      goldWake.style.opacity = opacity * 0.25;
-      goldHalo.setAttribute('cx', pt.x); goldHalo.setAttribute('cy', pt.y);
-      goldHalo.style.opacity = opacity * 0.08;
-      stations.forEach(function(s) {
-        var shouldLight = (dist >= s.dist - 8) && (t < FLOW + PAUSE);
-        if (shouldLight && !s.lit) { s.lit = true; if (s.dot) s.dot.classList.add('lit'); if (s.text) s.text.classList.add('lit'); }
-        else if (!shouldLight && s.lit) { s.lit = false; if (s.dot) s.dot.classList.remove('lit'); if (s.text) s.text.classList.remove('lit'); }
-      });
-      _goldBoatRafId = requestAnimationFrame(frame);
-    }
-    _goldBoatRafId = requestAnimationFrame(frame);
+    _goldBoatRafId = requestAnimationFrame(loopFrame);
   }
 
   window._stopGoldBoat = function() { if (_goldBoatRafId) { cancelAnimationFrame(_goldBoatRafId); _goldBoatRafId = null; } };
+
+  /** 重启小船动画 — 重置所有站点点亮态，从头开始穿行 */
+  window._restartGoldBoat = function() {
+    if (!path || !goldBoat) return;
+    if (_goldBoatRafId) cancelAnimationFrame(_goldBoatRafId);
+    /* 重置所有站点 */
+    stations.forEach(function(s) {
+      s.lit = false;
+      if (s.dot) s.dot.classList.remove('lit');
+      if (s.text) s.text.classList.remove('lit');
+    });
+    /* 重置小船位置到起点 */
+    var pt = path.getPointAtLength(0);
+    goldBoat.setAttribute('transform', 'translate(' + pt.x.toFixed(1) + ',' + pt.y.toFixed(1) + ') rotate(0)');
+    goldBoat.style.opacity = '0';
+    goldWake.style.opacity = '0';
+    goldHalo.style.opacity = '0';
+    /* 清除旧循环，重新开始 */
+    startTs = null;
+    _goldBoatRafId = requestAnimationFrame(loopFrame);
+  };
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }
   else { init(); }
 })();

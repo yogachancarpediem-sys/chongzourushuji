@@ -569,11 +569,9 @@ body {
   50% { transform: translateY(4px); opacity: 0.7; }
 }
 
-/* content-ready 后隐藏启程提示 */
+/* content-ready 后启程提示保持可见（用户手动点击） */
 #opening.content-ready .opening-tap-hint {
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
+  /* 保持显示，引导用户点击 */
 }
 
 /* ---- 手机端开场页适配 ---- */

@@ -1,7 +1,6 @@
 /**
  * intro.js — 开场动画管理
- * 卷轴视频 + 开场视频过渡 + 视频缓冲 loading
- * 从 app.js 拆分
+ * v2: 移除自动倒计时，恢复手动点击"踏上诗旅"；showContent 时重启小船动画
  */
 
 var _scrollLoopActive = true;
@@ -35,7 +34,6 @@ function setupVideoTransition() {
 
   var transitioning = false;
   var MAX_WAIT = 10;
-  var _autoStartTimer = null;
 
   function showContent() {
     if (transitioning) return;
@@ -47,41 +45,18 @@ function setupVideoTransition() {
     if (startBtn) {
       startBtn.style.pointerEvents = 'auto';
     }
+    /* 显示启程提示（引导用户点击） */
     var hint = document.getElementById('opening-tap-hint');
-    if (hint) hint.classList.add('hidden');
-    startAutoCountdown();
-  }
-
-  function startAutoCountdown() {
-    var countdown = 3;
-    if (startBtn) {
-      startBtn.classList.add('counting');
-      startBtn.querySelector('.btn-text').textContent = '踏上诗旅 · ' + countdown + 's';
+    if (hint) hint.classList.remove('hidden');
+    /* 重启金色小船动画（对齐 content 出现时机） */
+    if (typeof _restartGoldBoat === 'function') {
+      _restartGoldBoat();
     }
-    _autoStartTimer = setInterval(function() {
-      countdown--;
-      if (countdown <= 0) {
-        clearInterval(_autoStartTimer);
-        _autoStartTimer = null;
-        if (startBtn) {
-          startBtn.classList.remove('counting');
-          startBtn.querySelector('.btn-text').textContent = '踏上诗旅';
-        }
-        startJourney();
-      } else if (startBtn) {
-        startBtn.querySelector('.btn-text').textContent = '踏上诗旅 · ' + countdown + 's';
-      }
-    }, 1000);
   }
 
   if (startBtn) {
-    startBtn.setAttribute('onclick', '');
     startBtn.addEventListener('click', function(e) {
       e.stopPropagation();
-      if (_autoStartTimer) {
-        clearInterval(_autoStartTimer);
-        _autoStartTimer = null;
-      }
       startJourney();
     });
   }
