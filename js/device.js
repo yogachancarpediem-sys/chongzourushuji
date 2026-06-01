@@ -1,6 +1,6 @@
 /**
  * device.js — 设备性能检测与降级策略
- * v1 — 低端设备自动禁用 WebGL shader → CSS 静态渐变背景
+ * v2 — 修复 CSS 像素误判（×DPR² 转物理像素）；Safari 无 deviceMemory 时不降级
  */
 
 (function() {
@@ -14,22 +14,25 @@
   };
 
   /* 指标采集 */
-  var mem = navigator.deviceMemory || 4;          // GB
+  var memRaw = navigator.deviceMemory;           // Safari 不暴露此 API → undefined
+  var mem = (typeof memRaw === 'number') ? memRaw : null;
   var cores = navigator.hardwareConcurrency || 4;
   var isMobile = /Mobi|Android/i.test(navigator.userAgent);
-  var screenPixels = window.screen.width * window.screen.height;
+  /* 物理像素：CSS 像素 × DPR²（避免 retina 屏被误判为低端） */
+  var dpr = window.devicePixelRatio || 1;
+  var physicalPixels = window.screen.width * window.screen.height * dpr * dpr;
 
   /* 低端判定规则（满足任一即降级） */
   var isLowEnd =
-    (mem <= 2) ||                              // ≤2GB RAM
-    (cores <= 2) ||                            // ≤2核 CPU  
-    (isMobile && screenPixels < 480000) ||     // 小屏手机 (< 800×600)
-    (isMobile && mem <= 3 && cores <= 4 && screenPixels < 520000); // 综合低端
+    (mem !== null && mem <= 2) ||              // ≤2GB RAM（仅当 API 可用时）
+    (cores <= 2) ||                            // ≤2核 CPU
+    (physicalPixels < 500000);                 // 物理像素 < 50万（≈700×700 @1x，上古手机）
 
-  /* 中端判定 */
-  var isMidTier =
-    (mem <= 4 && !isLowEnd) ||
-    (isMobile && mem <= 4 && cores <= 6);
+  /* 中端判定 — 只在内存已知时使用；Safari 不暴露 deviceMemory，交给 GPU 检测 */
+  var isMidTier = false;
+  if (!isLowEnd && mem !== null && mem <= 4) {
+    isMidTier = true;
+  }
 
   if (isLowEnd) {
     profile.tier = 'low';
@@ -87,6 +90,6 @@
     '[device] tier=' + profile.tier +
     ' | shader=' + (profile.shaderDisabled ? 'OFF' : 'ON') +
     ' | mem=' + mem + 'G cores=' + cores +
-    ' | pixels=' + screenPixels
+    ' | physPx=' + physicalPixels.toFixed(0) + ' dpr=' + dpr
   );
 })();
