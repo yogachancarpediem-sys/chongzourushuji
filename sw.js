@@ -3,7 +3,7 @@
  * 首次访问后缓存核心资源，重复访问零等待
  */
 
-var CACHE_NAME = 'rushu-v2';
+var CACHE_NAME = 'rushu-v3';
 
 /* 静态资源使用相对路径，适配任何部署根 */
 var STATIC_ASSETS = [
@@ -17,7 +17,8 @@ var STATIC_ASSETS = [
   './js/sfx.js',
   './js/ambient.js',
   './js/idle-events.js',
-  './js/device.js'
+  './js/device.js',
+  './js/finale.js'
 ];
 
 /* Install: 预缓存核心静态资源 */

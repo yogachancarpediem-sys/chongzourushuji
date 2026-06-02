@@ -1,7 +1,7 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * v6: fetch + FileReader 替代 Canvas 转 data URL（消除移动端 Canvas 安全限制）
- * v7: 调试面板 — _debugLog 在页面显示保存过程日志
+ * v8: Canvas 2D 手绘含图诗签 _drawRichCard()，完全替代 html2canvas
+ *     移动端和桌面端行为一致，带风景背景图+角色图的实际图片诗签
  */
 
 /* ========== 调试面板（临时） ========== */
@@ -456,7 +456,6 @@ function saveDailyCard() {
     var imgEls = card.querySelectorAll('img');
     var bgEls = card.querySelectorAll('[style*="background-image"]');
     var urlSet = {};
-    var restoreList = [];
 
     imgEls.forEach(function(el) {
       var src = el.getAttribute('src');
@@ -470,63 +469,254 @@ function saveDailyCard() {
     var urls = Object.keys(urlSet);
     _debugLog('[saveDailyCard] images to inline:', urls.length, urls);
 
-    /* 全部图片转 data URL 后替代 DOM 中对应 src/background-image */
+    /* v8: 收集 data URL map → Canvas 2D 手绘含图诗签（完全不依赖 html2canvas） */
+    var urlToDataUrl = {};
     var inlineOk = 0, inlineFail = 0;
     var promises = urls.map(function(url) {
       return _imgUrlToDataURL(url).then(function(dataUrl) {
         inlineOk++;
+        urlToDataUrl[url] = dataUrl;
         _debugLog('[saveDailyCard] inlined ok (' + inlineOk + '/' + urls.length + '):', url.substring(0, 50));
-        /* 替换所有 <img> 中匹配的 src */
-        imgEls.forEach(function(el) {
-          if (el.getAttribute('src') === url) {
-            restoreList.push({ el: el, attr: 'src', oldVal: url });
-            el.setAttribute('src', dataUrl);
-          }
-        });
-        /* 替换所有 background-image 匹配的元素 */
-        bgEls.forEach(function(el) {
-          if (el.style.backgroundImage.indexOf(url) !== -1) {
-            restoreList.push({ el: el, attr: 'bg', oldVal: el.style.backgroundImage });
-            el.style.backgroundImage = el.style.backgroundImage.replace(url, dataUrl);
-          }
-        });
       }).catch(function(err) {
         inlineFail++;
-        console.error('[saveDailyCard] inline FAILED (' + inlineFail + '/' + urls.length + '):', url, err);
+        _debugLog('[saveDailyCard] inline FAILED (' + inlineFail + '/' + urls.length + '): ' + err.message);
       });
     });
 
     Promise.all(promises).then(function() {
       _debugLog('[saveDailyCard] inline result: ok=' + inlineOk + ' fail=' + inlineFail + ' total=' + urls.length);
       if (inlineOk === 0 && urls.length > 0) {
-        console.error('[saveDailyCard] ALL images failed to inline, falling back');
+        _debugLog('[saveDailyCard] ALL images failed to inline → _drawSimpleCard');
         _drawSimpleCard(card, station, filename);
         return;
       }
-      _debugLog('[saveDailyCard] capturing with html2canvas...');
-      if (typeof html2canvas === 'undefined') {
-        _debugLog('[saveDailyCard] html2canvas not loaded');
-        _drawSimpleCard(card, station, filename);
-        _restoreCardImages(restoreList);
-        return;
-      }
-      /* 图片已内联为 data URL，无需 CORS，可用高画质 */
-      html2canvas(card, { backgroundColor: '#F5F0E6', scale: 2, allowTaint: false, useCORS: false, logging: false }).then(function(canvas) {
-        _debugLog('[saveDailyCard] capture ok, size:', canvas.width + 'x' + canvas.height);
-        _restoreCardImages(restoreList);
-        _saveCanvas(canvas, filename, '📱 长按图片保存到相册');
-      }).catch(function(err) {
-        console.error('[saveDailyCard] html2canvas failed after inline:', err);
-        _restoreCardImages(restoreList);
-        _drawSimpleCard(card, station, filename);
-      });
+      _debugLog('[saveDailyCard] calling _drawRichCard with ' + Object.keys(urlToDataUrl).length + ' data URLs');
+      _drawRichCard(station, filename, urlToDataUrl);
     }).catch(function() {
-      console.error('[saveDailyCard] image inlining failed');
+      _debugLog('[saveDailyCard] promise.all rejected → _drawSimpleCard');
       _drawSimpleCard(card, station, filename);
     });
   } catch(e) {
     console.error('[saveDailyCard] exception:', e);
     showToast('生成失败，请重试');
+  }
+}
+
+/**
+ * Canvas 2D 手绘含图诗签（v8 新增）
+ * 完全不依赖 html2canvas，直接在 Canvas 上绘制实际图片 + 文字
+ * 移动端和桌面端行为一致
+ */
+function _drawRichCard(station, filename, urlToDataUrl) {
+  _debugLog('[_drawRichCard] starting, station=' + (station ? station.id : '?'));
+  if (!station) { _debugLog('[_drawRichCard] no station → _drawSimpleCard'); _drawSimpleCard(null, station, filename); return; }
+  var canvas = document.createElement('canvas');
+  canvas.width = 750;
+  canvas.height = 1100;
+  var ctx = canvas.getContext('2d');
+  var accent = (station && STATION_ACCENT[station.id]) || '#C4A35A';
+
+  /* ====== 1. 宣纸背景 ====== */
+  var bgGrad = ctx.createLinearGradient(0, 0, 0, 1100);
+  bgGrad.addColorStop(0, '#F5F0E6');
+  bgGrad.addColorStop(1, '#EDE5D5');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 750, 1100);
+
+  /* 纹理细线 */
+  ctx.strokeStyle = 'rgba(44,44,44,0.025)';
+  ctx.lineWidth = 1;
+  for (var ti = 0; ti < 1100; ti += 8) {
+    ctx.beginPath(); ctx.moveTo(0, ti); ctx.lineTo(750, ti); ctx.stroke();
+  }
+
+  /* ====== 2. 图片加载辅助 ====== */
+  function _loadImg(src) {
+    return new Promise(function(resolve, reject) {
+      var img = new Image();
+      img.onload = function() { resolve(img); };
+      img.onerror = function() { reject(new Error('image load failed')); };
+      img.src = src;
+    });
+  }
+
+  /* ====== 3. 分隔线 ====== */
+  function drawDivider(y) {
+    ctx.save();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath(); ctx.moveTo(210, y); ctx.lineTo(360, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(390, y); ctx.lineTo(540, y); ctx.stroke();
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath(); ctx.arc(375, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = accent;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawSeal() {
+    ctx.save();
+    ctx.strokeStyle = '#B85450';
+    ctx.lineWidth = 2.5;
+    ctx.globalAlpha = 0.72;
+    ctx.strokeRect(50, 48, 72, 98);
+    /* 内框 */
+    ctx.lineWidth = 1;
+    ctx.strokeRect(56, 54, 60, 86);
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = '#B85450';
+    ctx.font = 'bold 26px "Ma Shan Zheng", "KaiTi", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('入', 86, 78);
+    ctx.fillText('蜀', 86, 106);
+    ctx.fillText('记', 86, 134);
+    ctx.restore();
+  }
+
+  /* ====== 4. 获取角色图片数据 URL ====== */
+  var stationId = station.id;
+  var stationPoses = { linan:'wave', shanyin:'run', fengqiao:'read', jinshan:'wave',
+    jiankang:'think', huangzhou:'cute', wushan:'draw', kuizhou:'jump', shuzhou:'cute' };
+  var pose = stationPoses[stationId] || 'default';
+  var catType = (CHARACTER_ASSETS.stationCat && CHARACTER_ASSETS.stationCat[stationId]) || 'default';
+  var liuUrl = urlToDataUrl[CHARACTER_ASSETS.liuxiaoliu[pose]];
+  var catUrl = urlToDataUrl[CHARACTER_ASSETS.linu[catType]];
+
+  /* ====== 5. 绘制流程（先画背景图，再画文字和角色） ====== */
+  var sceneryKey = 'assets/scenery/' + stationId + '.webp';
+  var sceneryUrl = urlToDataUrl[sceneryKey];
+
+  /* 绘制所有文字元素 */
+  function drawTextOverlay() {
+    ctx.globalAlpha = 1;
+
+    /* 印章 */
+    drawSeal();
+
+    /* 驿站名 */
+    ctx.fillStyle = '#2C2C2C';
+    ctx.font = '52px "Ma Shan Zheng", "KaiTi", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(station.name, 375, 130);
+
+    /* 今地名 */
+    ctx.fillStyle = '#9A9590';
+    ctx.font = '22px "Noto Serif SC", "SimSun", serif';
+    ctx.fillText(station.modernName || '', 375, 175);
+
+    /* 古日期 */
+    ctx.font = 'italic 20px "Noto Serif SC", serif';
+    ctx.fillText(station.date || '', 375, 205);
+
+    /* 分隔线 1 */
+    drawDivider(238);
+
+    /* 诗句 */
+    if (station.poem) {
+      ctx.fillStyle = '#5A5A5A';
+      ctx.font = '28px "Ma Shan Zheng", "KaiTi", serif';
+      ctx.fillText('《' + station.poem.title + '》', 375, 295);
+
+      ctx.fillStyle = '#9A9590';
+      ctx.font = '20px "Noto Serif SC", serif';
+      ctx.fillText(station.poem.author || '', 375, 335);
+
+      var lineIdx = STATION_CARD_LINES[stationId] || [0, 1];
+      ctx.fillStyle = '#2C2C2C';
+      ctx.font = '34px "Noto Serif SC", "SimSun", serif';
+      lineIdx.forEach(function(idx, i) {
+        var line = station.poem.lines[idx];
+        if (line) ctx.fillText(line, 375, 395 + i * 58);
+      });
+    }
+
+    /* 分隔线 2 */
+    drawDivider(500);
+  }
+
+  /* 绘制文字和角色，然后保存 */
+  function drawCharsAndFinish() {
+    var charImgs = [];
+    if (liuUrl) charImgs.push({ url: liuUrl, x: 90, y: 560, h: 170 });
+    if (catUrl) charImgs.push({ url: catUrl, x: 230, y: 600, h: 120 });
+
+    var loadPromises = charImgs.map(function(c) {
+      return _loadImg(c.url).then(function(img) {
+        var scale = c.h / img.naturalHeight;
+        var w = img.naturalWidth * scale;
+        ctx.drawImage(img, c.x, c.y, w, c.h);
+        _debugLog('[_drawRichCard] drew char img ' + c.url.substring(c.url.length - 30));
+      }).catch(function() {
+        _debugLog('[_drawRichCard] char img load failed: ' + c.url.substring(c.url.length - 30));
+      });
+    });
+
+    Promise.all(loadPromises).then(function() {
+      /* 品牌信息 */
+      var now = new Date();
+      var mm = now.getMonth() + 1, dd = now.getDate();
+      var today = now.getFullYear() + '.' + (mm < 10 ? '0' + mm : mm) + '.' + (dd < 10 ? '0' + dd : dd);
+
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = '#9A9590';
+      ctx.font = '20px "Noto Serif SC", serif';
+      ctx.fillText(today, 660, 740);
+
+      ctx.fillStyle = accent;
+      ctx.globalAlpha = 0.7;
+      ctx.font = '24px "Ma Shan Zheng", serif';
+      ctx.fillText('重走《入蜀记》', 660, 780);
+
+      ctx.globalAlpha = 1;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#999';
+      ctx.font = '18px "Noto Serif SC", serif';
+      ctx.fillText(today + ' · 重走《入蜀记》', 375, 1050);
+
+      _debugLog('[_drawRichCard] done, saving...');
+      showToast('✅ 生成完成');
+      _saveCanvas(canvas, filename, '📱 长按图片保存到相册');
+    }).catch(function(err) {
+      _debugLog('[_drawRichCard] char load error: ' + err.message + ' → _drawSimpleCard');
+      _drawSimpleCard(null, station, filename);
+    });
+  }
+
+  /* 先画背景图（如果有），再画文字，再画角色 */
+  if (sceneryUrl) {
+    _loadImg(sceneryUrl).then(function(img) {
+      _debugLog('[_drawRichCard] scenery loaded, size=' + img.naturalWidth + 'x' + img.naturalHeight);
+      ctx.save();
+      /* 淡色背景图 */
+      ctx.globalAlpha = 0.30;
+      var scale = 750 / img.naturalWidth;
+      var drawH = img.naturalHeight * scale;
+      ctx.drawImage(img, 0, -30, 750, drawH + 30);
+      /* 渐变遮罩：底部渐变到宣纸色 */
+      ctx.globalAlpha = 1;
+      var overlay = ctx.createLinearGradient(0, 420, 0, 530);
+      overlay.addColorStop(0, 'rgba(245,240,230,0)');
+      overlay.addColorStop(0.6, 'rgba(245,240,230,0.7)');
+      overlay.addColorStop(1, 'rgba(245,240,230,0.95)');
+      ctx.fillStyle = overlay;
+      ctx.fillRect(0, 420, 750, 110);
+      ctx.restore();
+
+      drawTextOverlay();
+      drawCharsAndFinish();
+    }).catch(function(err) {
+      _debugLog('[_drawRichCard] scenery failed: ' + err.message + ' — drawing without bg');
+      drawTextOverlay();
+      drawCharsAndFinish();
+    });
+  } else {
+    _debugLog('[_drawRichCard] no scenery URL in map, keys: ' + Object.keys(urlToDataUrl).join(','));
+    drawTextOverlay();
+    drawCharsAndFinish();
   }
 }
 
