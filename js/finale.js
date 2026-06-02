@@ -138,11 +138,7 @@ function generateShareCard() {
       if (typeof html2canvas === 'undefined') { showToast('请稍后再试（图片库加载中）'); return; }
       html2canvas(card.querySelector('.share-card-inner'), { backgroundColor: '#F5F0E6', scale: 2, useCORS: true, logging: false }).then(function(canvas) {
         card.style.display = 'none';
-        var link = document.createElement('a');
-        link.download = '入蜀记_诗旅成就.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        showToast('✅ 卡片已保存');
+        _saveCanvas(canvas, '入蜀记_诗旅成就.png', '📱 长按图片保存到相册');
       }).catch(function() { card.style.display = 'none'; showToast('生成失败，请截图分享'); });
     }, 500);
   }
@@ -223,6 +219,60 @@ function closeDailyCard() {
   if (modal) { modal.style.animation = 'dcFadeIn 0.25s ease-out reverse'; setTimeout(function() { modal.remove(); }, 250); }
 }
 
+/**
+ * 跨平台保存 Canvas 为图片
+ * 移动端: navigator.share(文件) → 全屏图片长按保存
+ * 桌面端: <a download> 传统下载
+ */
+function _saveCanvas(canvas, filename, fallbackMsg) {
+  var isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
+  if (!isMobile) {
+    var link = document.createElement('a');
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('✅ 已保存');
+    return;
+  }
+
+  // 移动端：先尝试 Web Share API（可直接保存到相册）
+  canvas.toBlob(function(blob) {
+    var file = new File([blob], filename, { type: 'image/png' });
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: '重走《入蜀记》' }).then(function() {
+          showToast('✅ 已保存');
+        }).catch(function() {
+          _showLongPressSave(canvas, fallbackMsg);
+        });
+        return;
+      }
+    } catch(e) {}
+    _showLongPressSave(canvas, fallbackMsg);
+  }, 'image/png');
+}
+
+/** 移动端降级：全屏展示图片，用户长按保存 */
+function _showLongPressSave(canvas, msg) {
+  var dataUrl = canvas.toDataURL('image/png');
+  var overlay = document.createElement('div');
+  overlay.className = 'save-img-overlay';
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) {
+      document.body.removeChild(overlay);
+    }
+  });
+  overlay.innerHTML =
+    '<div class="save-img-container">' +
+      '<img src="' + dataUrl + '" class="save-img-preview" />' +
+      '<div class="save-img-hint">' + (msg || '📱 长按图片保存到相册') + '</div>' +
+      '<button class="save-img-close" onclick="this.closest(\'.save-img-overlay\').remove()">✕</button>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  showToast('📱 请长按图片保存');
+}
+
 function saveDailyCard() {
   var card = document.getElementById('dc-card');
   if (!card) return;
@@ -235,11 +285,7 @@ function saveDailyCard() {
       html2canvas(card, { backgroundColor: '#F5F0E6', scale: 2, useCORS: true, logging: false }).then(function(canvas) {
         var station = STATIONS.find(function(s) { return s.id === state.currentStationId; });
         var name = station ? station.name : '入蜀记';
-        var link = document.createElement('a');
-        link.download = '入蜀记_' + name + '_诗签.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        showToast('✅ 诗签已保存');
+        _saveCanvas(canvas, '入蜀记_' + name + '_诗签.png', '📱 长按图片保存到相册');
       }).catch(function() { showToast('生成失败，请长按卡片截图保存'); });
     }, 400);
   }

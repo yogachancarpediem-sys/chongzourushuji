@@ -3639,6 +3639,70 @@ body {
   }
 }
 
+/* ==================== 诗签保存预览（移动端长按保存降级） ==================== */
+.save-img-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.25s ease;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.save-img-container {
+  position: relative;
+  max-width: 92vw;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.save-img-preview {
+  max-width: 92vw;
+  max-height: 72vh;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  -webkit-user-select: none;
+  user-select: none;
+  /* 允许长按触发系统菜单 */
+  -webkit-touch-callout: default;
+}
+.save-img-hint {
+  color: rgba(255, 255, 255, 0.85);
+  font-family: "Noto Serif SC", serif;
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  text-align: center;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+}
+.save-img-close {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.save-img-close:active {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 /* ==================== ICP 备案号 ==================== */
 .site-icp {
   position: fixed;

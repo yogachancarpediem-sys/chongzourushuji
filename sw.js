@@ -3,7 +3,7 @@
  * 首次访问后缓存核心资源，重复访问零等待
  */
 
-var CACHE_NAME = 'rushu-v1';
+var CACHE_NAME = 'rushu-v2';
 
 /* 静态资源使用相对路径，适配任何部署根 */
 var STATIC_ASSETS = [
