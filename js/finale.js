@@ -1,6 +1,6 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * v5: 图片 data URL 内联策略 — 彻底消除 html2canvas CORS，恢复高画质
+ * v6: fetch + FileReader 替代 Canvas 转 data URL（消除移动端 Canvas 安全限制）
  */
 
 /* ========== 角色素材 ========== */
@@ -370,26 +370,40 @@ function _showLongPressSave(canvas, msg) {
 
 /**
  * 将同域图片 URL 转为 data URL（base64），消除 html2canvas CORS 问题
- * 移动端同域资源可直接通过 Canvas 转换而不触发跨域污染
+ * 使用 fetch + FileReader，不依赖 Canvas（避免移动端 Canvas 安全限制）
  */
 function _imgUrlToDataURL(url) {
-  return new Promise(function(resolve, reject) {
-    var img = new Image();
-    img.onload = function() {
-      var c = document.createElement('canvas');
-      c.width = img.naturalWidth;
-      c.height = img.naturalHeight;
-      var ctx = c.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      try {
-        resolve(c.toDataURL('image/png'));
-      } catch(e) {
-        reject(e);
-      }
-    };
-    img.onerror = reject;
-    img.src = url;
-  });
+  return fetch(url)
+    .then(function(res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + url);
+      return res.blob();
+    })
+    .then(function(blob) {
+      return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onloadend = function() { resolve(reader.result); };
+        reader.onerror = function() { reject(new Error('FileReader error: ' + url)); };
+        reader.readAsDataURL(blob);
+      });
+    })
+    .catch(function(err) {
+      /* 如果 fetch 失败（Service Worker 拦截等），回退到 Canvas 方案 */
+      console.warn('[_imgUrlToDataURL] fetch failed, trying Canvas fallback:', err.message);
+      return new Promise(function(resolve, reject) {
+        var img = new Image();
+        img.onload = function() {
+          var c = document.createElement('canvas');
+          c.width = img.naturalWidth;
+          c.height = img.naturalHeight;
+          var ctx = c.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          try { resolve(c.toDataURL('image/png')); }
+          catch(e) { reject(e); }
+        };
+        img.onerror = function() { reject(new Error('Image load failed: ' + url)); };
+        img.src = url;
+      });
+    });
 }
 
 function saveDailyCard() {
@@ -426,8 +440,11 @@ function saveDailyCard() {
     console.log('[saveDailyCard] images to inline:', urls.length, urls);
 
     /* 全部图片转 data URL 后替代 DOM 中对应 src/background-image */
+    var inlineOk = 0, inlineFail = 0;
     var promises = urls.map(function(url) {
       return _imgUrlToDataURL(url).then(function(dataUrl) {
+        inlineOk++;
+        console.log('[saveDailyCard] inlined ok (' + inlineOk + '/' + urls.length + '):', url.substring(0, 50));
         /* 替换所有 <img> 中匹配的 src */
         imgEls.forEach(function(el) {
           if (el.getAttribute('src') === url) {
@@ -443,12 +460,19 @@ function saveDailyCard() {
           }
         });
       }).catch(function(err) {
-        console.warn('[saveDailyCard] failed to inline:', url, err);
+        inlineFail++;
+        console.error('[saveDailyCard] inline FAILED (' + inlineFail + '/' + urls.length + '):', url, err);
       });
     });
 
     Promise.all(promises).then(function() {
-      console.log('[saveDailyCard] all images inlined, capturing...');
+      console.log('[saveDailyCard] inline result: ok=' + inlineOk + ' fail=' + inlineFail + ' total=' + urls.length);
+      if (inlineOk === 0 && urls.length > 0) {
+        console.error('[saveDailyCard] ALL images failed to inline, falling back');
+        _drawSimpleCard(card, station, filename);
+        return;
+      }
+      console.log('[saveDailyCard] capturing with html2canvas...');
       if (typeof html2canvas === 'undefined') {
         console.warn('[saveDailyCard] html2canvas not loaded');
         _drawSimpleCard(card, station, filename);
