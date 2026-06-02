@@ -1,6 +1,6 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * v9: 微信环境跳过 navigator.share，直接长按保存 + 优化保存界面
+ * v10: 修复角色图错位 — 并列底部对齐 + 自适应居中 + 尺寸匹配 DOM 比例
  */
 
 /* ========== 调试面板（临时） ========== */
@@ -663,22 +663,43 @@ function _drawRichCard(station, filename, urlToDataUrl) {
 
   /* 绘制文字和角色，然后保存 */
   function drawCharsAndFinish() {
-    var charImgs = [];
-    if (liuUrl) charImgs.push({ url: liuUrl, x: 90, y: 560, h: 170 });
-    if (catUrl) charImgs.push({ url: catUrl, x: 230, y: 600, h: 120 });
+    /* 角色图片信息：x 坐标按占位预留，实际位置等图片加载后再按宽度微调 */
+    var charBottom = 700; /* 底部基线 */
+    var liu = liuUrl ? { url: liuUrl, h: 115 } : null;   /* 陆小六高度: ~2×CSS 56px */
+    var cat = catUrl ? { url: catUrl, h: 80 } : null;     /* 狸奴高度: ~2×CSS 42px */
 
-    var loadPromises = charImgs.map(function(c) {
+    var charItems = [];
+    if (liu) charItems.push(liu);
+    if (cat) charItems.push(cat);
+
+    var loadPromises = charItems.map(function(c) {
       return _loadImg(c.url).then(function(img) {
-        var scale = c.h / img.naturalHeight;
-        var w = img.naturalWidth * scale;
-        ctx.drawImage(img, c.x, c.y, w, c.h);
-        _debugLog('[_drawRichCard] drew char img ' + c.url.substring(c.url.length - 30));
+        c.img = img;
+        c.w = (c.h / img.naturalHeight) * img.naturalWidth;
+        return c;
       }).catch(function() {
         _debugLog('[_drawRichCard] char img load failed: ' + c.url.substring(c.url.length - 30));
+        c.failed = true;
+        return c;
       });
     });
 
-    Promise.all(loadPromises).then(function() {
+    Promise.all(loadPromises).then(function(results) {
+      /* 计算角色布局：并列 + 底部对齐 */
+      var validChars = results.filter(function(c) { return !c.failed; });
+      var totalW = validChars.reduce(function(s, c) { return s + c.w; }, 0);
+      var gap = validChars.length > 1 ? 12 : 0;
+      var groupW = totalW + gap * (validChars.length - 1);
+      var startX = (750 - groupW) / 2; /* 居中 */
+
+      validChars.forEach(function(c, i) {
+        var x = startX;
+        for (var j = 0; j < i; j++) { x += validChars[j].w + gap; }
+        var y = charBottom - c.h;
+        ctx.drawImage(c.img, x, y, c.w, c.h);
+        _debugLog('[_drawRichCard] drew char at (' + Math.round(x) + ',' + y + ') ' + c.w + 'x' + c.h);
+      });
+
       /* 品牌信息 */
       var now = new Date();
       var mm = now.getMonth() + 1, dd = now.getDate();
