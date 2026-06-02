@@ -1,6 +1,6 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * v2: 修复小船动画（loopFrame 提升作用域 + _restartGoldBoat）
+ * v3: 移动端诗签保存（Web Share + 长按降级）+ 诊断日志
  */
 
 /* ========== 角色素材 ========== */
@@ -226,6 +226,7 @@ function closeDailyCard() {
  */
 function _saveCanvas(canvas, filename, fallbackMsg) {
   var isMobile = /Mobi|Android/i.test(navigator.userAgent);
+  console.log('[_saveCanvas] isMobile=' + isMobile + ' filename=' + filename);
 
   if (!isMobile) {
     var link = document.createElement('a');
@@ -237,18 +238,26 @@ function _saveCanvas(canvas, filename, fallbackMsg) {
   }
 
   // 移动端：先尝试 Web Share API（可直接保存到相册）
+  console.log('[_saveCanvas] converting to blob...');
   canvas.toBlob(function(blob) {
+    console.log('[_saveCanvas] blob ready, size=' + blob.size);
     var file = new File([blob], filename, { type: 'image/png' });
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        console.log('[_saveCanvas] trying navigator.share...');
         navigator.share({ files: [file], title: '重走《入蜀记》' }).then(function() {
+          console.log('[_saveCanvas] share succeeded');
           showToast('✅ 已保存');
-        }).catch(function() {
+        }).catch(function(err) {
+          console.log('[_saveCanvas] share cancelled/error:', err);
           _showLongPressSave(canvas, fallbackMsg);
         });
         return;
       }
-    } catch(e) {}
+    } catch(e) {
+      console.log('[_saveCanvas] canShare threw:', e);
+    }
+    console.log('[_saveCanvas] falling back to long-press save');
     _showLongPressSave(canvas, fallbackMsg);
   }, 'image/png');
 }
@@ -274,26 +283,42 @@ function _showLongPressSave(canvas, msg) {
 }
 
 function saveDailyCard() {
-  var card = document.getElementById('dc-card');
-  if (!card) return;
-  showToast('📷 正在生成诗签…');
-  var images = card.querySelectorAll('img');
-  var loaded = 0, total = images.length;
-  function tryCapture() {
-    setTimeout(function() {
-      if (typeof html2canvas === 'undefined') { showToast('请稍后再试（图片库加载中）'); return; }
-      html2canvas(card, { backgroundColor: '#F5F0E6', scale: 2, useCORS: true, logging: false }).then(function(canvas) {
-        var station = STATIONS.find(function(s) { return s.id === state.currentStationId; });
-        var name = station ? station.name : '入蜀记';
-        _saveCanvas(canvas, '入蜀记_' + name + '_诗签.png', '📱 长按图片保存到相册');
-      }).catch(function() { showToast('生成失败，请长按卡片截图保存'); });
-    }, 400);
+  try {
+    console.log('[saveDailyCard] called');
+    var card = document.getElementById('dc-card');
+    if (!card) {
+      console.warn('[saveDailyCard] dc-card not found in DOM');
+      showToast('⚠️ 请先打开诗签卡片');
+      return;
+    }
+    console.log('[saveDailyCard] card found, images:', card.querySelectorAll('img').length);
+    showToast('📷 正在生成诗签…');
+    var images = card.querySelectorAll('img');
+    var loaded = 0, total = images.length;
+    function tryCapture() {
+      setTimeout(function() {
+        if (typeof html2canvas === 'undefined') { showToast('请稍后再试（图片库加载中）'); return; }
+        console.log('[saveDailyCard] capturing with html2canvas...');
+        html2canvas(card, { backgroundColor: '#F5F0E6', scale: 2, useCORS: true, logging: false }).then(function(canvas) {
+          console.log('[saveDailyCard] capture done, calling _saveCanvas');
+          var station = STATIONS.find(function(s) { return s.id === state.currentStationId; });
+          var name = station ? station.name : '入蜀记';
+          _saveCanvas(canvas, '入蜀记_' + name + '_诗签.png', '📱 长按图片保存到相册');
+        }).catch(function(err) {
+          console.error('[saveDailyCard] html2canvas error:', err);
+          showToast('生成失败，请长按卡片截图保存');
+        });
+      }, 400);
+    }
+    if (total === 0) { tryCapture(); return; }
+    images.forEach(function(img) {
+      if (img.complete) { loaded++; if (loaded >= total) tryCapture(); }
+      else { img.onload = function() { loaded++; if (loaded >= total) tryCapture(); }; img.onerror = function() { loaded++; if (loaded >= total) tryCapture(); }; }
+    });
+  } catch(e) {
+    console.error('[saveDailyCard] exception:', e);
+    showToast('生成失败：' + e.message);
   }
-  if (total === 0) { tryCapture(); return; }
-  images.forEach(function(img) {
-    if (img.complete) { loaded++; if (loaded >= total) tryCapture(); }
-    else { img.onload = function() { loaded++; if (loaded >= total) tryCapture(); }; img.onerror = function() { loaded++; if (loaded >= total) tryCapture(); }; }
-  });
 }
 
 /* ========== 水墨流线交互 ========== */
