@@ -1,6 +1,6 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * v3: 移动端诗签保存（Web Share + 长按降级）+ 诊断日志
+ * v4: html2canvas 多层重试 + Canvas 2D 终极兜底（移动端 100% 可用）
  */
 
 /* ========== 角色素材 ========== */
@@ -134,17 +134,106 @@ function generateShareCard() {
       '<div class="share-card-quote">"纸上得来终觉浅，绝知此事要躬行。" —— 陆游</div>' +
       '</div>';
     card.style.display = 'block';
-    setTimeout(function() {
-      if (typeof html2canvas === 'undefined') { showToast('请稍后再试（图片库加载中）'); return; }
-      html2canvas(card.querySelector('.share-card-inner'), { backgroundColor: '#F5F0E6', scale: 2, useCORS: true, logging: false }).then(function(canvas) {
+
+    var shareStats = { visited: visited, total: total, collected: collected, totalFrag: totalFrag,
+      quizCorrect: state.quizCorrect, quizTotal: QUIZ_DATA.length, rankText: rankText, rankColor: rankColor, unlocked: unlocked };
+
+    function captureShare() {
+      if (typeof html2canvas === 'undefined') {
+        _drawSimpleShareCard(shareStats);
+        return;
+      }
+      var inner = card.querySelector('.share-card-inner');
+      html2canvas(inner, { backgroundColor: '#F5F0E6', scale: 1, allowTaint: true, useCORS: true, logging: false }).then(function(canvas) {
         card.style.display = 'none';
         _saveCanvas(canvas, '入蜀记_诗旅成就.png', '📱 长按图片保存到相册');
-      }).catch(function() { card.style.display = 'none'; showToast('生成失败，请截图分享'); });
-    }, 500);
+      }).catch(function() {
+        html2canvas(inner, { backgroundColor: '#F5F0E6', scale: 1, allowTaint: true, useCORS: false, logging: false }).then(function(canvas) {
+          card.style.display = 'none';
+          _saveCanvas(canvas, '入蜀记_诗旅成就.png', '📱 长按图片保存到相册');
+        }).catch(function() {
+          card.style.display = 'none';
+          _drawSimpleShareCard(shareStats);
+        });
+      });
+    }
+    setTimeout(captureShare, 500);
   }
 
   if (sceneryImg.complete && sceneryImg.naturalWidth > 0) doGenerate();
   else { sceneryImg.onload = doGenerate; sceneryImg.onerror = doGenerate; setTimeout(function() { if (!sceneryImg.complete) doGenerate(); }, 5000); }
+}
+
+/** Canvas 2D 兜底：简化版成就卡片 */
+function _drawSimpleShareCard(stats) {
+  console.log('[_drawSimpleShareCard] rendering fallback...');
+  var canvas = document.createElement('canvas');
+  canvas.width = 750;
+  canvas.height = 1000;
+  var ctx = canvas.getContext('2d');
+
+  var bgGrad = ctx.createLinearGradient(0, 0, 0, 1000);
+  bgGrad.addColorStop(0, '#F5F0E6');
+  bgGrad.addColorStop(1, '#EDE5D5');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 750, 1000);
+
+  /* 纹理 */
+  ctx.strokeStyle = 'rgba(44,44,44,0.03)';
+  ctx.lineWidth = 1;
+  for (var i = 0; i < 1000; i += 8) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(750, i); ctx.stroke(); }
+
+  /* 标题 */
+  ctx.fillStyle = '#2C2C2C';
+  ctx.font = 'bold 52px "Noto Serif SC", "SimSun", serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('重走《入蜀记》', 375, 120);
+  ctx.font = '22px "Noto Serif SC", "SimSun", serif';
+  ctx.fillStyle = '#888';
+  ctx.fillText('陆游 · 乾道六年（1170）', 375, 165);
+
+  /* 等级 */
+  ctx.font = 'bold 36px "Noto Serif SC", "SimSun", serif';
+  ctx.fillStyle = stats.rankColor;
+  ctx.fillText(stats.rankText, 375, 230);
+
+  /* 分隔线 */
+  ctx.strokeStyle = stats.rankColor;
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(250, 260); ctx.lineTo(500, 260); ctx.stroke();
+  ctx.beginPath(); ctx.arc(375, 260, 5, 0, Math.PI * 2); ctx.fill();
+
+  /* 统计 */
+  ctx.font = '56px "Noto Serif SC", "SimSun", serif';
+  ctx.fillStyle = '#2C2C2C';
+  var statY = 360;
+  var cols = [{label:'驿站', val: stats.visited + '/' + stats.total},
+              {label:'碎片', val: stats.collected + '/' + stats.totalFrag},
+              {label:'诗题', val: stats.quizCorrect + '/' + stats.quizTotal}];
+  cols.forEach(function(col, i) {
+    var x = 160 + i * 215;
+    ctx.textAlign = 'center';
+    ctx.fillText(col.val, x, statY);
+    ctx.font = '22px "Noto Serif SC", "SimSun", serif';
+    ctx.fillStyle = '#666';
+    ctx.fillText(col.label, x, statY + 40);
+    ctx.font = '56px "Noto Serif SC", "SimSun", serif';
+    ctx.fillStyle = '#2C2C2C';
+  });
+
+  /* 名言 */
+  ctx.fillStyle = '#888';
+  ctx.font = 'italic 22px "Noto Serif SC", serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('"纸上得来终觉浅，绝知此事要躬行。"', 375, 540);
+
+  /* 品牌 */
+  ctx.fillStyle = '#999';
+  ctx.font = '18px "Noto Serif SC", "SimSun", serif';
+  ctx.fillText(new Date().getFullYear() + ' · 重走《入蜀记》', 375, 930);
+
+  showToast('✅ 生成完成');
+  _saveCanvas(canvas, '入蜀记_诗旅成就.png', '📱 长按图片保存到相册');
 }
 
 /* ========== 诗签卡片 ========== */
@@ -291,34 +380,134 @@ function saveDailyCard() {
       showToast('⚠️ 请先打开诗签卡片');
       return;
     }
-    console.log('[saveDailyCard] card found, images:', card.querySelectorAll('img').length);
     showToast('📷 正在生成诗签…');
+
+    var station = STATIONS.find(function(s) { return s.id === state.currentStationId; });
+    var name = station ? station.name : '入蜀记';
+    var filename = '入蜀记_' + name + '_诗签.png';
+
+    /* 等待所有图片加载完成 */
     var images = card.querySelectorAll('img');
     var loaded = 0, total = images.length;
-    function tryCapture() {
-      setTimeout(function() {
-        if (typeof html2canvas === 'undefined') { showToast('请稍后再试（图片库加载中）'); return; }
-        console.log('[saveDailyCard] capturing with html2canvas...');
-        html2canvas(card, { backgroundColor: '#F5F0E6', scale: 2, useCORS: true, logging: false }).then(function(canvas) {
-          console.log('[saveDailyCard] capture done, calling _saveCanvas');
-          var station = STATIONS.find(function(s) { return s.id === state.currentStationId; });
-          var name = station ? station.name : '入蜀记';
-          _saveCanvas(canvas, '入蜀记_' + name + '_诗签.png', '📱 长按图片保存到相册');
-        }).catch(function(err) {
-          console.error('[saveDailyCard] html2canvas error:', err);
-          showToast('生成失败，请长按卡片截图保存');
+
+    function doCapture() {
+      if (typeof html2canvas === 'undefined') {
+        console.warn('[saveDailyCard] html2canvas not loaded, using Canvas2D fallback');
+        _drawSimpleCard(card, station, filename);
+        return;
+      }
+      console.log('[saveDailyCard] capturing with html2canvas...');
+      /* 第 1 层：allowTaint + scale:1（最兼容移动端） */
+      html2canvas(card, { backgroundColor: '#F5F0E6', scale: 1, allowTaint: true, useCORS: true, logging: false }).then(function(canvas) {
+        console.log('[saveDailyCard] html2canvas scale:1 ok');
+        _saveCanvas(canvas, filename, '📱 长按图片保存到相册');
+      }).catch(function(err1) {
+        console.warn('[saveDailyCard] attempt 1 failed:', err1);
+        /* 第 2 层：关闭 CORS 再试 */
+        html2canvas(card, { backgroundColor: '#F5F0E6', scale: 1, allowTaint: true, useCORS: false, logging: false }).then(function(canvas) {
+          console.log('[saveDailyCard] html2canvas noCORS ok');
+          _saveCanvas(canvas, filename, '📱 长按图片保存到相册');
+        }).catch(function(err2) {
+          console.error('[saveDailyCard] attempt 2 failed:', err2);
+          /* 第 3 层：Canvas 2D 手绘简版诗签 */
+          _drawSimpleCard(card, station, filename);
         });
-      }, 400);
+      });
     }
-    if (total === 0) { tryCapture(); return; }
+
+    if (total === 0) { setTimeout(doCapture, 200); return; }
     images.forEach(function(img) {
-      if (img.complete) { loaded++; if (loaded >= total) tryCapture(); }
-      else { img.onload = function() { loaded++; if (loaded >= total) tryCapture(); }; img.onerror = function() { loaded++; if (loaded >= total) tryCapture(); }; }
+      if (img.complete) { loaded++; if (loaded >= total) setTimeout(doCapture, 200); }
+      else {
+        img.onload = function() { loaded++; if (loaded >= total) setTimeout(doCapture, 200); };
+        img.onerror = function() {
+          /* 图片加载失败也继续，html2canvas 会跳过 */
+          loaded++; if (loaded >= total) setTimeout(doCapture, 200);
+        };
+      }
     });
   } catch(e) {
     console.error('[saveDailyCard] exception:', e);
-    showToast('生成失败：' + e.message);
+    showToast('生成失败，请重试');
   }
+}
+
+/**
+ * Canvas 2D 终极兜底：手绘简化版诗签
+ * 不依赖任何外部库，纯 Canvas API，移动端 100% 可用
+ */
+function _drawSimpleCard(card, station, filename) {
+  console.log('[_drawSimpleCard] rendering fallback card...');
+  var canvas = document.createElement('canvas');
+  canvas.width = 750;
+  canvas.height = 1100;
+  var ctx = canvas.getContext('2d');
+
+  /* 宣纸底色 */
+  var bgGrad = ctx.createLinearGradient(0, 0, 0, 1100);
+  bgGrad.addColorStop(0, '#F5F0E6');
+  bgGrad.addColorStop(1, '#EDE5D5');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, 750, 1100);
+
+  /* 纸张纹理（细线模拟） */
+  ctx.strokeStyle = 'rgba(44,44,44,0.03)';
+  ctx.lineWidth = 1;
+  for (var i = 0; i < 1100; i += 8) { ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(750, i); ctx.stroke(); }
+
+  /* 顶部留白 + 站点名 */
+  ctx.fillStyle = '#2C2C2C';
+  ctx.font = 'bold 48px "Noto Serif SC", "SimSun", serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(station ? station.name : '入蜀记', 375, 100);
+
+  /* 今地名 */
+  if (station && station.modernName) {
+    ctx.fillStyle = '#888';
+    ctx.font = '22px "Noto Serif SC", "SimSun", serif';
+    ctx.fillText(station.modernName, 375, 140);
+  }
+
+  /* 分隔线 */
+  var accent = (station && STATION_ACCENT[station.id]) || '#C4A35A';
+  ctx.strokeStyle = accent;
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(200, 170); ctx.lineTo(550, 170); ctx.stroke();
+  ctx.beginPath(); ctx.arc(375, 170, 5, 0, Math.PI * 2); ctx.fillStyle = accent; ctx.fill();
+
+  /* 诗句 */
+  if (station && station.poem) {
+    ctx.fillStyle = '#2C2C2C';
+    ctx.font = '36px "Ma Shan Zheng", "KaiTi", cursive';
+    ctx.textAlign = 'center';
+    if (station.poem.title) {
+      ctx.font = 'bold 30px "Noto Serif SC", "SimSun", serif';
+      ctx.fillText('《' + station.poem.title + '》', 375, 240);
+    }
+    ctx.font = '22px "Noto Serif SC", "SimSun", serif';
+    ctx.fillStyle = '#666';
+    ctx.fillText(station.poem.author || '', 375, 275);
+
+    ctx.fillStyle = '#2C2C2C';
+    ctx.font = '34px "Ma Shan Zheng", "KaiTi", cursive';
+    var lineIdx = STATION_CARD_LINES[station.id] || [0, 1];
+    lineIdx.forEach(function(i, idx) {
+      var line = station.poem.lines[i];
+      if (line) ctx.fillText(line, 375, 340 + idx * 56);
+    });
+  }
+
+  /* 品牌标识 */
+  var now = new Date();
+  var mm = now.getMonth() + 1, dd = now.getDate();
+  var today = now.getFullYear() + '.' + (mm < 10 ? '0' + mm : mm) + '.' + (dd < 10 ? '0' + dd : dd);
+  ctx.fillStyle = '#999';
+  ctx.font = '20px "Noto Serif SC", "SimSun", serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(today + ' · 重走《入蜀记》', 375, 1050);
+
+  showToast('✅ 生成完成');
+  _saveCanvas(canvas, filename, '📱 长按图片保存到相册');
 }
 
 /* ========== 水墨流线交互 ========== */
