@@ -1,7 +1,6 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * v8: Canvas 2D 手绘含图诗签 _drawRichCard()，完全替代 html2canvas
- *     移动端和桌面端行为一致，带风景背景图+角色图的实际图片诗签
+ * v9: 微信环境跳过 navigator.share，直接长按保存 + 优化保存界面
  */
 
 /* ========== 调试面板（临时） ========== */
@@ -342,8 +341,10 @@ function closeDailyCard() {
  * 桌面端: <a download> 传统下载
  */
 function _saveCanvas(canvas, filename, fallbackMsg) {
-  var isMobile = /Mobi|Android/i.test(navigator.userAgent);
-  _debugLog('[_saveCanvas] isMobile=' + isMobile + ' filename=' + filename);
+  var ua = navigator.userAgent;
+  var isMobile = /Mobi|Android/i.test(ua);
+  var isWeChat = /MicroMessenger/i.test(ua);
+  _debugLog('[_saveCanvas] isMobile=' + isMobile + ' isWeChat=' + isWeChat + ' filename=' + filename);
 
   if (!isMobile) {
     var link = document.createElement('a');
@@ -354,13 +355,26 @@ function _saveCanvas(canvas, filename, fallbackMsg) {
     return;
   }
 
-  // 移动端：先尝试 Web Share API（可直接保存到相册）
+  // 微信内置浏览器：navigator.share 不支持，直接走长按保存
+  // iOS Safari 12+: 支持 share，尝试之；Android Chrome 也支持
+  if (isWeChat) {
+    _debugLog('[_saveCanvas] WeChat detected → skip share, go to long-press');
+    _showLongPressSave(canvas, fallbackMsg);
+    return;
+  }
+
+  // 其他移动浏览器：先尝试 Web Share API
   _debugLog('[_saveCanvas] converting to blob...');
   canvas.toBlob(function(blob) {
+    if (!blob) {
+      _debugLog('[_saveCanvas] toBlob returned null → fallback');
+      _showLongPressSave(canvas, fallbackMsg);
+      return;
+    }
     _debugLog('[_saveCanvas] blob ready, size=' + blob.size);
     var file = new File([blob], filename, { type: 'image/png' });
     try {
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
         _debugLog('[_saveCanvas] trying navigator.share...');
         navigator.share({ files: [file], title: '重走《入蜀记》' }).then(function() {
           _debugLog('[_saveCanvas] share succeeded');
@@ -381,22 +395,32 @@ function _saveCanvas(canvas, filename, fallbackMsg) {
 
 /** 移动端降级：全屏展示图片，用户长按保存 */
 function _showLongPressSave(canvas, msg) {
+  var ua = navigator.userAgent;
+  var isWeChat = /MicroMessenger/i.test(ua);
   var dataUrl = canvas.toDataURL('image/png');
+  _debugLog('[_showLongPressSave] isWeChat=' + isWeChat + ' dataUrlLen=' + dataUrl.length);
+
   var overlay = document.createElement('div');
   overlay.className = 'save-img-overlay';
+  /* 点击空白处关闭 */
   overlay.addEventListener('click', function(e) {
     if (e.target === overlay) {
       document.body.removeChild(overlay);
     }
   });
+
+  var hintText = isWeChat
+    ? '👆 长按上方图片 → 点击「保存图片」'
+    : (msg || '📱 长按图片保存到相册');
+
   overlay.innerHTML =
     '<div class="save-img-container">' +
-      '<img src="' + dataUrl + '" class="save-img-preview" />' +
-      '<div class="save-img-hint">' + (msg || '📱 长按图片保存到相册') + '</div>' +
+      '<img src="' + dataUrl + '" class="save-img-preview" alt="诗签" />' +
+      '<div class="save-img-hint">' + hintText + '</div>' +
       '<button class="save-img-close" onclick="this.closest(\'.save-img-overlay\').remove()">✕</button>' +
     '</div>';
   document.body.appendChild(overlay);
-  showToast('📱 请长按图片保存');
+  showToast(isWeChat ? '👆 长按图片保存' : '📱 请长按图片保存');
 }
 
 /**
