@@ -1,7 +1,38 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
  * v6: fetch + FileReader 替代 Canvas 转 data URL（消除移动端 Canvas 安全限制）
+ * v7: 调试面板 — _debugLog 在页面显示保存过程日志
  */
+
+/* ========== 调试面板（临时） ========== */
+var _debugLines = [];
+var _debugPanel = null;
+
+function _debugLog(msg) {
+  console.log(msg);
+  _debugLines.push(msg);
+  if (_debugLines.length > 20) _debugLines.shift();
+  if (!_debugPanel) {
+    _debugPanel = document.createElement('div');
+    _debugPanel.className = 'debug-panel';
+    var close = document.createElement('button');
+    close.className = 'debug-panel-close';
+    close.textContent = '✕ 关闭';
+    close.onclick = function() { _debugPanel.remove(); _debugPanel = null; };
+    _debugPanel.appendChild(close);
+    var list = document.createElement('div');
+    list.className = 'debug-panel-list';
+    list.id = 'debug-list';
+    _debugPanel.appendChild(list);
+    document.body.appendChild(_debugPanel);
+  }
+  var list = document.getElementById('debug-list');
+  if (list) {
+    list.innerHTML = _debugLines.map(function(l) { return '<div class="debug-line">' + l + '</div>'; }).join('');
+  }
+}
+
+/* 在 saveDailyCard 中替换 console.log 为 _debugLog —— 见下方 */
 
 /* ========== 角色素材 ========== */
 var CHARACTER_ASSETS = {
@@ -163,7 +194,7 @@ function generateShareCard() {
 
 /** Canvas 2D 兜底：简化版成就卡片 */
 function _drawSimpleShareCard(stats) {
-  console.log('[_drawSimpleShareCard] rendering fallback...');
+  _debugLog('[_drawSimpleShareCard] rendering fallback...');
   var canvas = document.createElement('canvas');
   canvas.width = 750;
   canvas.height = 1000;
@@ -312,7 +343,7 @@ function closeDailyCard() {
  */
 function _saveCanvas(canvas, filename, fallbackMsg) {
   var isMobile = /Mobi|Android/i.test(navigator.userAgent);
-  console.log('[_saveCanvas] isMobile=' + isMobile + ' filename=' + filename);
+  _debugLog('[_saveCanvas] isMobile=' + isMobile + ' filename=' + filename);
 
   if (!isMobile) {
     var link = document.createElement('a');
@@ -324,26 +355,26 @@ function _saveCanvas(canvas, filename, fallbackMsg) {
   }
 
   // 移动端：先尝试 Web Share API（可直接保存到相册）
-  console.log('[_saveCanvas] converting to blob...');
+  _debugLog('[_saveCanvas] converting to blob...');
   canvas.toBlob(function(blob) {
-    console.log('[_saveCanvas] blob ready, size=' + blob.size);
+    _debugLog('[_saveCanvas] blob ready, size=' + blob.size);
     var file = new File([blob], filename, { type: 'image/png' });
     try {
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        console.log('[_saveCanvas] trying navigator.share...');
+        _debugLog('[_saveCanvas] trying navigator.share...');
         navigator.share({ files: [file], title: '重走《入蜀记》' }).then(function() {
-          console.log('[_saveCanvas] share succeeded');
+          _debugLog('[_saveCanvas] share succeeded');
           showToast('✅ 已保存');
         }).catch(function(err) {
-          console.log('[_saveCanvas] share cancelled/error:', err);
+          _debugLog('[_saveCanvas] share cancelled/error:', err);
           _showLongPressSave(canvas, fallbackMsg);
         });
         return;
       }
     } catch(e) {
-      console.log('[_saveCanvas] canShare threw:', e);
+      _debugLog('[_saveCanvas] canShare threw:', e);
     }
-    console.log('[_saveCanvas] falling back to long-press save');
+    _debugLog('[_saveCanvas] falling back to long-press save');
     _showLongPressSave(canvas, fallbackMsg);
   }, 'image/png');
 }
@@ -388,7 +419,7 @@ function _imgUrlToDataURL(url) {
     })
     .catch(function(err) {
       /* 如果 fetch 失败（Service Worker 拦截等），回退到 Canvas 方案 */
-      console.warn('[_imgUrlToDataURL] fetch failed, trying Canvas fallback:', err.message);
+      _debugLog('[_imgUrlToDataURL] fetch failed (trying Canvas fallback): ' + err.message);
       return new Promise(function(resolve, reject) {
         var img = new Image();
         img.onload = function() {
@@ -408,10 +439,10 @@ function _imgUrlToDataURL(url) {
 
 function saveDailyCard() {
   try {
-    console.log('[saveDailyCard] called');
+    _debugLog('[saveDailyCard] called');
     var card = document.getElementById('dc-card');
     if (!card) {
-      console.warn('[saveDailyCard] dc-card not found in DOM');
+      _debugLog('[saveDailyCard] dc-card not found in DOM');
       showToast('⚠️ 请先打开诗签卡片');
       return;
     }
@@ -437,14 +468,14 @@ function saveDailyCard() {
     });
 
     var urls = Object.keys(urlSet);
-    console.log('[saveDailyCard] images to inline:', urls.length, urls);
+    _debugLog('[saveDailyCard] images to inline:', urls.length, urls);
 
     /* 全部图片转 data URL 后替代 DOM 中对应 src/background-image */
     var inlineOk = 0, inlineFail = 0;
     var promises = urls.map(function(url) {
       return _imgUrlToDataURL(url).then(function(dataUrl) {
         inlineOk++;
-        console.log('[saveDailyCard] inlined ok (' + inlineOk + '/' + urls.length + '):', url.substring(0, 50));
+        _debugLog('[saveDailyCard] inlined ok (' + inlineOk + '/' + urls.length + '):', url.substring(0, 50));
         /* 替换所有 <img> 中匹配的 src */
         imgEls.forEach(function(el) {
           if (el.getAttribute('src') === url) {
@@ -466,22 +497,22 @@ function saveDailyCard() {
     });
 
     Promise.all(promises).then(function() {
-      console.log('[saveDailyCard] inline result: ok=' + inlineOk + ' fail=' + inlineFail + ' total=' + urls.length);
+      _debugLog('[saveDailyCard] inline result: ok=' + inlineOk + ' fail=' + inlineFail + ' total=' + urls.length);
       if (inlineOk === 0 && urls.length > 0) {
         console.error('[saveDailyCard] ALL images failed to inline, falling back');
         _drawSimpleCard(card, station, filename);
         return;
       }
-      console.log('[saveDailyCard] capturing with html2canvas...');
+      _debugLog('[saveDailyCard] capturing with html2canvas...');
       if (typeof html2canvas === 'undefined') {
-        console.warn('[saveDailyCard] html2canvas not loaded');
+        _debugLog('[saveDailyCard] html2canvas not loaded');
         _drawSimpleCard(card, station, filename);
         _restoreCardImages(restoreList);
         return;
       }
       /* 图片已内联为 data URL，无需 CORS，可用高画质 */
       html2canvas(card, { backgroundColor: '#F5F0E6', scale: 2, allowTaint: false, useCORS: false, logging: false }).then(function(canvas) {
-        console.log('[saveDailyCard] capture ok, size:', canvas.width + 'x' + canvas.height);
+        _debugLog('[saveDailyCard] capture ok, size:', canvas.width + 'x' + canvas.height);
         _restoreCardImages(restoreList);
         _saveCanvas(canvas, filename, '📱 长按图片保存到相册');
       }).catch(function(err) {
@@ -511,7 +542,7 @@ function _restoreCardImages(list) {
  * 不依赖任何外部库，纯 Canvas API，移动端 100% 可用
  */
 function _drawSimpleCard(card, station, filename) {
-  console.log('[_drawSimpleCard] rendering fallback card...');
+  _debugLog('[_drawSimpleCard] rendering fallback card...');
   var canvas = document.createElement('canvas');
   canvas.width = 750;
   canvas.height = 1100;
