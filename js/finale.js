@@ -1,6 +1,6 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * v4: html2canvas 多层重试 + Canvas 2D 终极兜底（移动端 100% 可用）
+ * v5: 图片 data URL 内联策略 — 彻底消除 html2canvas CORS，恢复高画质
  */
 
 /* ========== 角色素材 ========== */
@@ -98,8 +98,6 @@ function showFinale() {
 /* ========== 分享卡片 ========== */
 function generateShareCard() {
   showToast('📷 正在生成卡片…');
-  var sceneryImg = new Image();
-  sceneryImg.src = 'assets/scenery/finale.webp';
 
   function doGenerate() {
     var card = document.getElementById('share-card');
@@ -138,30 +136,29 @@ function generateShareCard() {
     var shareStats = { visited: visited, total: total, collected: collected, totalFrag: totalFrag,
       quizCorrect: state.quizCorrect, quizTotal: QUIZ_DATA.length, rankText: rankText, rankColor: rankColor, unlocked: unlocked };
 
-    function captureShare() {
-      if (typeof html2canvas === 'undefined') {
-        _drawSimpleShareCard(shareStats);
-        return;
-      }
-      var inner = card.querySelector('.share-card-inner');
-      html2canvas(inner, { backgroundColor: '#F5F0E6', scale: 1, allowTaint: true, useCORS: true, logging: false }).then(function(canvas) {
-        card.style.display = 'none';
-        _saveCanvas(canvas, '入蜀记_诗旅成就.png', '📱 长按图片保存到相册');
-      }).catch(function() {
-        html2canvas(inner, { backgroundColor: '#F5F0E6', scale: 1, allowTaint: true, useCORS: false, logging: false }).then(function(canvas) {
+    /* 内联 scenery 背景图 */
+    _imgUrlToDataURL('assets/scenery/finale.webp').then(function(dataUrl) {
+      var sceneryEl = card.querySelector('.share-card-scenery');
+      if (sceneryEl) { sceneryEl.style.backgroundImage = 'url(' + dataUrl + ')'; }
+    }).catch(function() {}).then(function() {
+      setTimeout(function() {
+        if (typeof html2canvas === 'undefined') {
+          _drawSimpleShareCard(shareStats);
+          return;
+        }
+        var inner = card.querySelector('.share-card-inner');
+        html2canvas(inner, { backgroundColor: '#F5F0E6', scale: 2, allowTaint: false, useCORS: false, logging: false }).then(function(canvas) {
           card.style.display = 'none';
           _saveCanvas(canvas, '入蜀记_诗旅成就.png', '📱 长按图片保存到相册');
         }).catch(function() {
           card.style.display = 'none';
           _drawSimpleShareCard(shareStats);
         });
-      });
-    }
-    setTimeout(captureShare, 500);
+      }, 300);
+    });
   }
 
-  if (sceneryImg.complete && sceneryImg.naturalWidth > 0) doGenerate();
-  else { sceneryImg.onload = doGenerate; sceneryImg.onerror = doGenerate; setTimeout(function() { if (!sceneryImg.complete) doGenerate(); }, 5000); }
+  doGenerate();
 }
 
 /** Canvas 2D 兜底：简化版成就卡片 */
@@ -371,6 +368,30 @@ function _showLongPressSave(canvas, msg) {
   showToast('📱 请长按图片保存');
 }
 
+/**
+ * 将同域图片 URL 转为 data URL（base64），消除 html2canvas CORS 问题
+ * 移动端同域资源可直接通过 Canvas 转换而不触发跨域污染
+ */
+function _imgUrlToDataURL(url) {
+  return new Promise(function(resolve, reject) {
+    var img = new Image();
+    img.onload = function() {
+      var c = document.createElement('canvas');
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      var ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      try {
+        resolve(c.toDataURL('image/png'));
+      } catch(e) {
+        reject(e);
+      }
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 function saveDailyCard() {
   try {
     console.log('[saveDailyCard] called');
@@ -386,50 +407,79 @@ function saveDailyCard() {
     var name = station ? station.name : '入蜀记';
     var filename = '入蜀记_' + name + '_诗签.png';
 
-    /* 等待所有图片加载完成 */
-    var images = card.querySelectorAll('img');
-    var loaded = 0, total = images.length;
+    /* 收集卡片内所有图片：<img> 的 src + CSS background-image */
+    var imgEls = card.querySelectorAll('img');
+    var bgEls = card.querySelectorAll('[style*="background-image"]');
+    var urlSet = {};
+    var restoreList = [];
 
-    function doCapture() {
+    imgEls.forEach(function(el) {
+      var src = el.getAttribute('src');
+      if (src && src.indexOf('data:') !== 0) urlSet[src] = true;
+    });
+    bgEls.forEach(function(el) {
+      var match = el.style.backgroundImage.match(/url\(["']?([^"')]+)["']?\)/);
+      if (match && match[1] && match[1].indexOf('data:') !== 0) urlSet[match[1]] = true;
+    });
+
+    var urls = Object.keys(urlSet);
+    console.log('[saveDailyCard] images to inline:', urls.length, urls);
+
+    /* 全部图片转 data URL 后替代 DOM 中对应 src/background-image */
+    var promises = urls.map(function(url) {
+      return _imgUrlToDataURL(url).then(function(dataUrl) {
+        /* 替换所有 <img> 中匹配的 src */
+        imgEls.forEach(function(el) {
+          if (el.getAttribute('src') === url) {
+            restoreList.push({ el: el, attr: 'src', oldVal: url });
+            el.setAttribute('src', dataUrl);
+          }
+        });
+        /* 替换所有 background-image 匹配的元素 */
+        bgEls.forEach(function(el) {
+          if (el.style.backgroundImage.indexOf(url) !== -1) {
+            restoreList.push({ el: el, attr: 'bg', oldVal: el.style.backgroundImage });
+            el.style.backgroundImage = el.style.backgroundImage.replace(url, dataUrl);
+          }
+        });
+      }).catch(function(err) {
+        console.warn('[saveDailyCard] failed to inline:', url, err);
+      });
+    });
+
+    Promise.all(promises).then(function() {
+      console.log('[saveDailyCard] all images inlined, capturing...');
       if (typeof html2canvas === 'undefined') {
-        console.warn('[saveDailyCard] html2canvas not loaded, using Canvas2D fallback');
+        console.warn('[saveDailyCard] html2canvas not loaded');
         _drawSimpleCard(card, station, filename);
+        _restoreCardImages(restoreList);
         return;
       }
-      console.log('[saveDailyCard] capturing with html2canvas...');
-      /* 第 1 层：allowTaint + scale:1（最兼容移动端） */
-      html2canvas(card, { backgroundColor: '#F5F0E6', scale: 1, allowTaint: true, useCORS: true, logging: false }).then(function(canvas) {
-        console.log('[saveDailyCard] html2canvas scale:1 ok');
+      /* 图片已内联为 data URL，无需 CORS，可用高画质 */
+      html2canvas(card, { backgroundColor: '#F5F0E6', scale: 2, allowTaint: false, useCORS: false, logging: false }).then(function(canvas) {
+        console.log('[saveDailyCard] capture ok, size:', canvas.width + 'x' + canvas.height);
+        _restoreCardImages(restoreList);
         _saveCanvas(canvas, filename, '📱 长按图片保存到相册');
-      }).catch(function(err1) {
-        console.warn('[saveDailyCard] attempt 1 failed:', err1);
-        /* 第 2 层：关闭 CORS 再试 */
-        html2canvas(card, { backgroundColor: '#F5F0E6', scale: 1, allowTaint: true, useCORS: false, logging: false }).then(function(canvas) {
-          console.log('[saveDailyCard] html2canvas noCORS ok');
-          _saveCanvas(canvas, filename, '📱 长按图片保存到相册');
-        }).catch(function(err2) {
-          console.error('[saveDailyCard] attempt 2 failed:', err2);
-          /* 第 3 层：Canvas 2D 手绘简版诗签 */
-          _drawSimpleCard(card, station, filename);
-        });
+      }).catch(function(err) {
+        console.error('[saveDailyCard] html2canvas failed after inline:', err);
+        _restoreCardImages(restoreList);
+        _drawSimpleCard(card, station, filename);
       });
-    }
-
-    if (total === 0) { setTimeout(doCapture, 200); return; }
-    images.forEach(function(img) {
-      if (img.complete) { loaded++; if (loaded >= total) setTimeout(doCapture, 200); }
-      else {
-        img.onload = function() { loaded++; if (loaded >= total) setTimeout(doCapture, 200); };
-        img.onerror = function() {
-          /* 图片加载失败也继续，html2canvas 会跳过 */
-          loaded++; if (loaded >= total) setTimeout(doCapture, 200);
-        };
-      }
+    }).catch(function() {
+      console.error('[saveDailyCard] image inlining failed');
+      _drawSimpleCard(card, station, filename);
     });
   } catch(e) {
     console.error('[saveDailyCard] exception:', e);
     showToast('生成失败，请重试');
   }
+}
+
+function _restoreCardImages(list) {
+  list.forEach(function(item) {
+    if (item.attr === 'src') { item.el.setAttribute('src', item.oldVal); }
+    else if (item.attr === 'bg') { item.el.style.backgroundImage = item.oldVal; }
+  });
 }
 
 /**
