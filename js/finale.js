@@ -1,6 +1,6 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * v11: 完全匹配 DOM 版 .dc-card 布局 — 圆角边框、专属渐变背景、风景+遮罩、印章/站名/日期按比例缩放、诗句弹性居中、底部角色左+品牌右
+ * v12: 印章加高 104→129，三字间距拉开避免与红线重合
  */
 
 /* ========== 调试面板（临时） ========== */
@@ -626,22 +626,22 @@ function _drawRichCard(station, filename, urlToDataUrl) {
     ctx.save();
     _roundRect(0, 0, CW, CH, 29); ctx.clip();
 
-    /* 印章 — absolute top:26 left:26, 38×50 → 54,54, 79×104 */
+    /* 印章 — 原 38×50 偏矮，加高到 38×62 → 79×129（三字不挤红线） */
     ctx.save();
     ctx.strokeStyle = '#B85450';
     ctx.globalAlpha = 0.68;
     ctx.lineWidth = 4;
-    ctx.strokeRect(54, 54, 79, 104);
+    ctx.strokeRect(54, 54, 79, 129);        /* 外框 y:54→183 */
     ctx.lineWidth = 2;
-    ctx.strokeRect(60, 60, 67, 92);
+    ctx.strokeRect(60, 60, 67, 117);        /* 内框 y:60→177 */
     ctx.globalAlpha = 0.8;
     ctx.fillStyle = '#B85450';
     ctx.font = '26px "Ma Shan Zheng", "KaiTi", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('入', 93, 86);
-    ctx.fillText('蜀', 93, 118);
-    ctx.fillText('记', 93, 150);
+    ctx.fillText('入', 93, 80);              /* 上留白 */
+    ctx.fillText('蜀', 93, 119);             /* 中 */
+    ctx.fillText('记', 93, 158);             /* 下留白 */
     ctx.restore();
 
     /* 站名 — 2.6rem Ma Shan Zheng, margin-top 16 → 87px, y=75+33=108 */
