@@ -1,37 +1,10 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * v12: 印章加高 104→129，三字间距拉开避免与红线重合
+ * v13: 关闭调试面板
  */
 
-/* ========== 调试面板（临时） ========== */
-var _debugLines = [];
-var _debugPanel = null;
-
-function _debugLog(msg) {
-  console.log(msg);
-  _debugLines.push(msg);
-  if (_debugLines.length > 20) _debugLines.shift();
-  if (!_debugPanel) {
-    _debugPanel = document.createElement('div');
-    _debugPanel.className = 'debug-panel';
-    var close = document.createElement('button');
-    close.className = 'debug-panel-close';
-    close.textContent = '✕ 关闭';
-    close.onclick = function() { _debugPanel.remove(); _debugPanel = null; };
-    _debugPanel.appendChild(close);
-    var list = document.createElement('div');
-    list.className = 'debug-panel-list';
-    list.id = 'debug-list';
-    _debugPanel.appendChild(list);
-    document.body.appendChild(_debugPanel);
-  }
-  var list = document.getElementById('debug-list');
-  if (list) {
-    list.innerHTML = _debugLines.map(function(l) { return '<div class="debug-line">' + l + '</div>'; }).join('');
-  }
-}
-
-/* 在 saveDailyCard 中替换 console.log 为 _debugLog —— 见下方 */
+/* v13: 调试面板已关闭，_debugLog 保留为空函数（调用点不清除，方便以后重新开启） */
+function _debugLog() {}
 
 /* ========== 角色素材 ========== */
 var CHARACTER_ASSETS = {
