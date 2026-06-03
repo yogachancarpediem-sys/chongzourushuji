@@ -1,6 +1,6 @@
 /**
  * finale.js — 终页 + 分享卡片 + 诗签 + 角色素材 + 水墨流线 + 帆船动画
- * v10: 修复角色图错位 — 并列底部对齐 + 自适应居中 + 尺寸匹配 DOM 比例
+ * v11: 完全匹配 DOM 版 .dc-card 布局 — 圆角边框、专属渐变背景、风景+遮罩、印章/站名/日期按比例缩放、诗句弹性居中、底部角色左+品牌右
  */
 
 /* ========== 调试面板（临时） ========== */
@@ -527,241 +527,291 @@ function saveDailyCard() {
 }
 
 /**
- * Canvas 2D 手绘含图诗签（v8 新增）
- * 完全不依赖 html2canvas，直接在 Canvas 上绘制实际图片 + 文字
- * 移动端和桌面端行为一致
+ * Canvas 2D 手绘含图诗签 — v11: 精确匹配 DOM 版 .dc-card 布局
+ * DOM 360×540 → Canvas 750×1125 (scale=2.0833×)
  */
 function _drawRichCard(station, filename, urlToDataUrl) {
   _debugLog('[_drawRichCard] starting, station=' + (station ? station.id : '?'));
   if (!station) { _debugLog('[_drawRichCard] no station → _drawSimpleCard'); _drawSimpleCard(null, station, filename); return; }
+
+  var CW = 750, CH = 1125;         // 画布尺寸 (360/540 × 2.083)
+  var PAD_TOP = 75, PAD_X = 63;    // 内边距 (36/30 × 2.083)
+  var CX = 375;                     // 水平居中
   var canvas = document.createElement('canvas');
-  canvas.width = 750;
-  canvas.height = 1100;
+  canvas.width = CW; canvas.height = CH;
   var ctx = canvas.getContext('2d');
-  var accent = (station && STATION_ACCENT[station.id]) || '#C4A35A';
+  var accent = STATION_ACCENT[station.id] || '#C4A35A';
+  var stationId = station.id;
 
-  /* ====== 1. 宣纸背景 ====== */
-  var bgGrad = ctx.createLinearGradient(0, 0, 0, 1100);
-  bgGrad.addColorStop(0, '#F5F0E6');
-  bgGrad.addColorStop(1, '#EDE5D5');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, 750, 1100);
-
-  /* 纹理细线 */
-  ctx.strokeStyle = 'rgba(44,44,44,0.025)';
-  ctx.lineWidth = 1;
-  for (var ti = 0; ti < 1100; ti += 8) {
-    ctx.beginPath(); ctx.moveTo(0, ti); ctx.lineTo(750, ti); ctx.stroke();
-  }
-
-  /* ====== 2. 图片加载辅助 ====== */
+  /* 工具函数 */
   function _loadImg(src) {
-    return new Promise(function(resolve, reject) {
+    return new Promise(function(res, rej) {
       var img = new Image();
-      img.onload = function() { resolve(img); };
-      img.onerror = function() { reject(new Error('image load failed')); };
+      img.onload = function() { res(img); };
+      img.onerror = function() { rej(new Error('image load failed')); };
       img.src = src;
     });
   }
-
-  /* ====== 3. 分隔线 ====== */
-  function drawDivider(y) {
-    ctx.save();
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = 1.5;
-    ctx.globalAlpha = 0.35;
-    ctx.beginPath(); ctx.moveTo(210, y); ctx.lineTo(360, y); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(390, y); ctx.lineTo(540, y); ctx.stroke();
-    ctx.globalAlpha = 0.5;
-    ctx.beginPath(); ctx.arc(375, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = accent;
-    ctx.fill();
-    ctx.restore();
+  /* 圆角矩形路径 */
+  function _roundRect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+    ctx.lineTo(x + r, y + h);
+    ctx.arcTo(x, y + h, x, y + h - r, r);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.closePath();
   }
 
-  function drawSeal() {
-    ctx.save();
-    ctx.strokeStyle = '#B85450';
-    ctx.lineWidth = 2.5;
-    ctx.globalAlpha = 0.72;
-    ctx.strokeRect(50, 48, 72, 98);
-    /* 内框 */
-    ctx.lineWidth = 1;
-    ctx.strokeRect(56, 54, 60, 86);
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = '#B85450';
-    ctx.font = 'bold 26px "Ma Shan Zheng", "KaiTi", serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('入', 86, 78);
-    ctx.fillText('蜀', 86, 106);
-    ctx.fillText('记', 86, 134);
-    ctx.restore();
+  // ====== 步骤1: 卡片底层 ======
+  /* 1a. 圆角卡片底色 — 各站专属渐变 */
+  var cardBg = ctx.createLinearGradient(0, 0, 0, CH);
+  cardBg.addColorStop(0, '#F5F0E6');
+  cardBg.addColorStop(1, '#EDE5D5');
+  ctx.fillStyle = cardBg;
+  _roundRect(0, 0, CW, CH, 29);
+  ctx.fill();
+
+  /* 1b. 纹理 */
+  ctx.save();
+  _roundRect(0, 0, CW, CH, 29); ctx.clip();
+  ctx.strokeStyle = 'rgba(44,44,44,0.02)';
+  ctx.lineWidth = 1;
+  for (var ti = 0; ti < CH; ti += 10) {
+    ctx.beginPath(); ctx.moveTo(0, ti); ctx.lineTo(CW, ti); ctx.stroke();
   }
+  ctx.restore();
 
-  /* ====== 4. 获取角色图片数据 URL ====== */
-  var stationId = station.id;
-  var stationPoses = { linan:'wave', shanyin:'run', fengqiao:'read', jinshan:'wave',
-    jiankang:'think', huangzhou:'cute', wushan:'draw', kuizhou:'jump', shuzhou:'cute' };
-  var pose = stationPoses[stationId] || 'default';
-  var catType = (CHARACTER_ASSETS.stationCat && CHARACTER_ASSETS.stationCat[stationId]) || 'default';
-  var liuUrl = urlToDataUrl[CHARACTER_ASSETS.liuxiaoliu[pose]];
-  var catUrl = urlToDataUrl[CHARACTER_ASSETS.linu[catType]];
-
-  /* ====== 5. 绘制流程（先画背景图，再画文字和角色） ====== */
+  // ====== 步骤2: 风景背景 + 遮罩 (匹配 .dc-scenery + .dc-scenery-overlay) ======
   var sceneryKey = 'assets/scenery/' + stationId + '.webp';
   var sceneryUrl = urlToDataUrl[sceneryKey];
 
-  /* 绘制所有文字元素 */
-  function drawTextOverlay() {
+  function _sceneryLoaded(sceneryImg) {
+    ctx.save();
+    _roundRect(0, 0, CW, CH, 29); ctx.clip();
+
+    /* 风景图: cover + center 30%, opacity 0.32 */
+    ctx.globalAlpha = 0.32;
+    var iw = sceneryImg.naturalWidth, ih = sceneryImg.naturalHeight;
+    var scale = Math.max(CW / iw, CH / ih);
+    var dw = iw * scale, dh = ih * scale;
+    var dx = (CW - dw) / 2;
+    var dy = (CH - dh) * 0.30; /* center 30% */
+    ctx.drawImage(sceneryImg, dx, dy, dw, dh);
+
+    /* 渐变遮罩 (匹配 .dc-scenery-overlay) */
     ctx.globalAlpha = 1;
+    var ov = ctx.createLinearGradient(0, 0, 0, CH);
+    ov.addColorStop(0, 'rgba(245,240,230,0.50)');
+    ov.addColorStop(0.3, 'rgba(245,240,230,0.30)');
+    ov.addColorStop(0.6, 'rgba(245,240,230,0.55)');
+    ov.addColorStop(1, 'rgba(245,240,230,0.85)');
+    ctx.fillStyle = ov;
+    ctx.fillRect(0, 0, CW, CH);
+    ctx.restore();
+    _drawContent();
+  }
 
-    /* 印章 */
-    drawSeal();
+  function _sceneryFailed() {
+    _debugLog('[_drawRichCard] scenery failed — drawing without bg');
+    _drawContent();
+  }
 
-    /* 驿站名 */
-    ctx.fillStyle = '#2C2C2C';
-    ctx.font = '52px "Ma Shan Zheng", "KaiTi", serif';
+  // ====== 步骤3: 内容区 (匹配 .dc-inner flex column) ======
+  function _drawContent() {
+    ctx.save();
+    _roundRect(0, 0, CW, CH, 29); ctx.clip();
+
+    /* 印章 — absolute top:26 left:26, 38×50 → 54,54, 79×104 */
+    ctx.save();
+    ctx.strokeStyle = '#B85450';
+    ctx.globalAlpha = 0.68;
+    ctx.lineWidth = 4;
+    ctx.strokeRect(54, 54, 79, 104);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(60, 60, 67, 92);
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = '#B85450';
+    ctx.font = '26px "Ma Shan Zheng", "KaiTi", serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.fillText(station.name, 375, 130);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('入', 93, 86);
+    ctx.fillText('蜀', 93, 118);
+    ctx.fillText('记', 93, 150);
+    ctx.restore();
 
-    /* 今地名 */
+    /* 站名 — 2.6rem Ma Shan Zheng, margin-top 16 → 87px, y=75+33=108 */
+    ctx.fillStyle = '#2C2C2C';
+    ctx.font = '87px "Ma Shan Zheng", "KaiTi", serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(station.name, CX, 108);
+
+    /* 今地名 — 0.72rem, margin-top 6 → 24px, y=108+87+12=207 */
     ctx.fillStyle = '#9A9590';
-    ctx.font = '22px "Noto Serif SC", "SimSun", serif';
-    ctx.fillText(station.modernName || '', 375, 175);
+    ctx.font = '24px "Noto Serif SC", serif';
+    ctx.fillText(station.modernName || '', CX, 207);
 
-    /* 古日期 */
-    ctx.font = 'italic 20px "Noto Serif SC", serif';
-    ctx.fillText(station.date || '', 375, 205);
+    /* 古日期 — 0.68rem italic, margin-top 2 → 23px, y=207+24+4=235 */
+    ctx.font = 'italic 23px "Noto Serif SC", serif';
+    ctx.fillText(station.date || '', CX, 235);
 
-    /* 分隔线 1 */
-    drawDivider(238);
+    /* 分隔线 1 — margin 18×2.083=37 → y=235+23+37=295 */
+    _drawDivider(295);
 
-    /* 诗句 */
-    if (station.poem) {
-      ctx.fillStyle = '#5A5A5A';
-      ctx.font = '28px "Ma Shan Zheng", "KaiTi", serif';
-      ctx.fillText('《' + station.poem.title + '》', 375, 295);
-
-      ctx.fillStyle = '#9A9590';
-      ctx.font = '20px "Noto Serif SC", serif';
-      ctx.fillText(station.poem.author || '', 375, 335);
-
+    /* 诗句区 — 匹配 .dc-poem-section flex:1 + justify-content:center */
+    /* 从 divider1 结束(y≈313)到 divider2 开始前，居中 */
+    var poemTop = 313, poemBot = 930, poemMid = (poemTop + poemBot) / 2;
+    var hasPoem = station.poem && station.poem.lines && station.poem.lines.length > 0;
+    if (hasPoem) {
       var lineIdx = STATION_CARD_LINES[stationId] || [0, 1];
+      var lines = lineIdx.map(function(i) { return station.poem.lines[i]; }).filter(Boolean);
+      /* 估算诗区块高度: title 31 + 8 + author 24 + 14 + N×78 */
+      var blockH = 31 + 8 + 24 + 14 + lines.length * 78;
+      var startY = poemMid - blockH / 2;
+
+      /* title — 0.92rem → 31px Ma Shan Zheng */
+      ctx.fillStyle = '#5A5A5A';
+      ctx.font = '31px "Ma Shan Zheng", "KaiTi", serif';
+      ctx.fillText('《' + station.poem.title + '》', CX, startY);
+
+      /* author — 0.72rem → 24px, margin-bottom 14 */
+      ctx.fillStyle = '#9A9590';
+      ctx.font = '24px "Noto Serif SC", serif';
+      ctx.fillText(station.poem.author || '', CX, startY + 31 + 8);
+
+      /* poem lines — 1.12rem → 35px Noto Serif SC, line-height 2.1 */
       ctx.fillStyle = '#2C2C2C';
-      ctx.font = '34px "Noto Serif SC", "SimSun", serif';
-      lineIdx.forEach(function(idx, i) {
-        var line = station.poem.lines[idx];
-        if (line) ctx.fillText(line, 375, 395 + i * 58);
+      ctx.font = '35px "Noto Serif SC", serif';
+      lines.forEach(function(line, i) {
+        ctx.fillText(line, CX, startY + 31 + 8 + 24 + 14 + i * 78);
       });
     }
 
-    /* 分隔线 2 */
-    drawDivider(500);
+    /* 分隔线 2 — 底部 footer 上方 */
+    _drawDivider(945);
+
+    ctx.restore();
+    _drawFooter();
   }
 
-  /* 绘制文字和角色，然后保存 */
-  function drawCharsAndFinish() {
-    /* 角色图片信息：x 坐标按占位预留，实际位置等图片加载后再按宽度微调 */
-    var charBottom = 700; /* 底部基线 */
-    var liu = liuUrl ? { url: liuUrl, h: 115 } : null;   /* 陆小六高度: ~2×CSS 56px */
-    var cat = catUrl ? { url: catUrl, h: 80 } : null;     /* 狸奴高度: ~2×CSS 42px */
+  /* 分隔线 — 匹配 .dc-divider */
+  function _drawDivider(yCenter) {
+    /* DOM: flex gap 10, dot 5×5 → Canvas gap 21, dot r=5 */
+    var lineY = yCenter;
+    ctx.save();
+    ctx.strokeStyle = accent;
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath(); ctx.moveTo(145, lineY); ctx.lineTo(CX - 5 - 21, lineY); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(CX + 5 + 21, lineY); ctx.lineTo(CW - 145, lineY); ctx.stroke();
+    ctx.globalAlpha = 0.5;
+    ctx.beginPath(); ctx.arc(CX, lineY, 5, 0, Math.PI * 2);
+    ctx.fillStyle = accent; ctx.fill();
+    ctx.restore();
+  }
 
-    var charItems = [];
-    if (liu) charItems.push(liu);
-    if (cat) charItems.push(cat);
+  // ====== 步骤4: 底部 Footer — 匹配 .dc-footer ======
+  function _drawFooter() {
+    /* Footer: flex, align-items:flex-end, justify-content:space-between */
+    /* 左: characters (flex-end, gap 6 → gap 12); 右: branding */
+    var footerY = 963, charBottom = 1070;
 
-    var loadPromises = charItems.map(function(c) {
-      return _loadImg(c.url).then(function(img) {
+    /* 品牌信息 — 右侧 */
+    var now = new Date();
+    var mm = now.getMonth() + 1, dd = now.getDate();
+    var today = now.getFullYear() + '.' + (mm < 10 ? '0' + mm : mm) + '.' + (dd < 10 ? '0' + dd : dd);
+    var weekDays = ['日','一','二','三','四','五','六'];
+    var weekDay = '周' + weekDays[now.getDay()];
+
+    ctx.save();
+    _roundRect(0, 0, CW, CH, 29); ctx.clip();
+
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillStyle = '#9A9590';
+    ctx.font = '23px "Noto Serif SC", serif';
+    ctx.fillText(today + ' ' + weekDay, CW - PAD_X, footerY);
+
+    ctx.fillStyle = accent;
+    ctx.globalAlpha = 0.65;
+    ctx.font = '24px "Ma Shan Zheng", serif';
+    ctx.fillText('重走《入蜀记》', CW - PAD_X, footerY + 30);
+
+    ctx.restore();
+
+    /* 角色图 — 左侧 flex-end */
+    var stationPoses = { linan:'wave', shanyin:'run', fengqiao:'read', jinshan:'wave',
+      jiankang:'think', huangzhou:'cute', wushan:'draw', kuizhou:'jump', shuzhou:'cute' };
+    var pose = stationPoses[stationId] || 'default';
+    var catType = (CHARACTER_ASSETS.stationCat && CHARACTER_ASSETS.stationCat[stationId]) || 'default';
+    var liuUrl = urlToDataUrl[CHARACTER_ASSETS.liuxiaoliu[pose]];
+    var catUrl = urlToDataUrl[CHARACTER_ASSETS.linu[catType]];
+
+    /* 陆小六: h=142 (68×2.083), 狸奴: h=104 (50×2.083) */
+    var liuH = 142, catH = 104, gap = 12;
+    var charDefs = [];
+    if (liuUrl) charDefs.push({ url: liuUrl, h: liuH });
+    if (catUrl) charDefs.push({ url: catUrl, h: catH });
+
+    if (charDefs.length === 0) { _finish(); return; }
+
+    function _drawChars() {
+      var valid = charDefs.filter(function(c) { return !c.failed; });
+      ctx.save();
+      _roundRect(0, 0, CW, CH, 29); ctx.clip();
+      var x = PAD_X;
+      valid.forEach(function(c, i) {
+        if (i > 0) x += valid[i-1].w + gap;
+        ctx.drawImage(c.img, x, charBottom - c.h, c.w, c.h);
+        _debugLog('[_drawRichCard] char at x=' + Math.round(x) + ' h=' + c.h);
+      });
+      ctx.restore();
+      _finish();
+    }
+
+    var loaded = 0, failed = 0;
+    charDefs.forEach(function(c) {
+      _loadImg(c.url).then(function(img) {
         c.img = img;
         c.w = (c.h / img.naturalHeight) * img.naturalWidth;
-        return c;
+        loaded++;
+        if (loaded + failed === charDefs.length) _drawChars();
       }).catch(function() {
-        _debugLog('[_drawRichCard] char img load failed: ' + c.url.substring(c.url.length - 30));
-        c.failed = true;
-        return c;
+        c.failed = true; failed++;
+        if (loaded + failed === charDefs.length) _drawChars();
       });
-    });
-
-    Promise.all(loadPromises).then(function(results) {
-      /* 计算角色布局：并列 + 底部对齐 */
-      var validChars = results.filter(function(c) { return !c.failed; });
-      var totalW = validChars.reduce(function(s, c) { return s + c.w; }, 0);
-      var gap = validChars.length > 1 ? 12 : 0;
-      var groupW = totalW + gap * (validChars.length - 1);
-      var startX = (750 - groupW) / 2; /* 居中 */
-
-      validChars.forEach(function(c, i) {
-        var x = startX;
-        for (var j = 0; j < i; j++) { x += validChars[j].w + gap; }
-        var y = charBottom - c.h;
-        ctx.drawImage(c.img, x, y, c.w, c.h);
-        _debugLog('[_drawRichCard] drew char at (' + Math.round(x) + ',' + y + ') ' + c.w + 'x' + c.h);
-      });
-
-      /* 品牌信息 */
-      var now = new Date();
-      var mm = now.getMonth() + 1, dd = now.getDate();
-      var today = now.getFullYear() + '.' + (mm < 10 ? '0' + mm : mm) + '.' + (dd < 10 ? '0' + dd : dd);
-
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillStyle = '#9A9590';
-      ctx.font = '20px "Noto Serif SC", serif';
-      ctx.fillText(today, 660, 740);
-
-      ctx.fillStyle = accent;
-      ctx.globalAlpha = 0.7;
-      ctx.font = '24px "Ma Shan Zheng", serif';
-      ctx.fillText('重走《入蜀记》', 660, 780);
-
-      ctx.globalAlpha = 1;
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#999';
-      ctx.font = '18px "Noto Serif SC", serif';
-      ctx.fillText(today + ' · 重走《入蜀记》', 375, 1050);
-
-      _debugLog('[_drawRichCard] done, saving...');
-      showToast('✅ 生成完成');
-      _saveCanvas(canvas, filename, '📱 长按图片保存到相册');
-    }).catch(function(err) {
-      _debugLog('[_drawRichCard] char load error: ' + err.message + ' → _drawSimpleCard');
-      _drawSimpleCard(null, station, filename);
     });
   }
 
-  /* 先画背景图（如果有），再画文字，再画角色 */
+  function _finish() {
+    /* 卡片外边框 */
+    ctx.strokeStyle = 'rgba(196,163,90,0.18)';
+    ctx.lineWidth = 2;
+    _roundRect(0, 0, CW, CH, 29);
+    ctx.stroke();
+
+    _debugLog('[_drawRichCard] done, saving...');
+    showToast('✅ 生成完成');
+    _saveCanvas(canvas, filename, '📱 长按图片保存到相册');
+  }
+
+  // ====== 启动: 加载风景图 ======
   if (sceneryUrl) {
     _loadImg(sceneryUrl).then(function(img) {
       _debugLog('[_drawRichCard] scenery loaded, size=' + img.naturalWidth + 'x' + img.naturalHeight);
-      ctx.save();
-      /* 淡色背景图 */
-      ctx.globalAlpha = 0.30;
-      var scale = 750 / img.naturalWidth;
-      var drawH = img.naturalHeight * scale;
-      ctx.drawImage(img, 0, -30, 750, drawH + 30);
-      /* 渐变遮罩：底部渐变到宣纸色 */
-      ctx.globalAlpha = 1;
-      var overlay = ctx.createLinearGradient(0, 420, 0, 530);
-      overlay.addColorStop(0, 'rgba(245,240,230,0)');
-      overlay.addColorStop(0.6, 'rgba(245,240,230,0.7)');
-      overlay.addColorStop(1, 'rgba(245,240,230,0.95)');
-      ctx.fillStyle = overlay;
-      ctx.fillRect(0, 420, 750, 110);
-      ctx.restore();
-
-      drawTextOverlay();
-      drawCharsAndFinish();
+      _sceneryLoaded(img);
     }).catch(function(err) {
-      _debugLog('[_drawRichCard] scenery failed: ' + err.message + ' — drawing without bg');
-      drawTextOverlay();
-      drawCharsAndFinish();
+      _debugLog('[_drawRichCard] scenery failed: ' + err.message);
+      _sceneryFailed();
     });
   } else {
-    _debugLog('[_drawRichCard] no scenery URL in map, keys: ' + Object.keys(urlToDataUrl).join(','));
-    drawTextOverlay();
-    drawCharsAndFinish();
+    _debugLog('[_drawRichCard] no scenery URL — keys: ' + Object.keys(urlToDataUrl).join(','));
+    _sceneryFailed();
   }
 }
 
